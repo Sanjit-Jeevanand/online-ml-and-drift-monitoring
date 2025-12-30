@@ -42,11 +42,11 @@ RAW_TO_SEMANTIC_COLUMN_MAP: Dict[str, str] = {
 # Loader
 # -----------------------------
 
+
 def load_openml_credit_default(
     arff_path: Path,
     apply_semantic_mapping: bool = True,
 ) -> pd.DataFrame:
-
 
     if not arff_path.exists():
         raise FileNotFoundError(f"ARFF file not found: {arff_path}")
@@ -55,21 +55,18 @@ def load_openml_credit_default(
     raw_data, _ = arff.loadarff(arff_path)
     df = pd.DataFrame(raw_data)
 
-    # Decode byte strings (ARFF categorical quirk)
+    # Decode byte strings
     for col in df.select_dtypes(include=["object"]).columns:
         df[col] = df[col].str.decode("utf-8")
 
-    # Rename target column
-    if "y" not in df.columns:
-        raise ValueError("Expected target column 'y' not found")
+    # 🔒 VALIDATE RAW SCHEMA HERE (before renaming)
+    validate_schema(df)
 
+    # Rename target
     df = df.rename(columns={"y": "default_flag"})
 
     # Apply semantic feature mapping
     if apply_semantic_mapping:
         df = df.rename(columns=RAW_TO_SEMANTIC_COLUMN_MAP)
-
-    # Validate schema (raw schema is enforced before semantic mapping)
-    validate_schema(df)
 
     return df

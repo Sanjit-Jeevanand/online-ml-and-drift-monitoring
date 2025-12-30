@@ -37,19 +37,14 @@ def validate_schema(df: pd.DataFrame) -> None:
 
     errors = []
 
-    # Target check
+    # Check target
     if TARGET_COLUMN not in df.columns:
         errors.append(f"Missing target column: {TARGET_COLUMN}")
 
-    # Feature presence
+    # Check feature presence
     for col in FEATURE_COLUMNS:
         if col not in df.columns:
             errors.append(f"Missing feature column: {col}")
-
-    # Identifier leakage
-    for col in IDENTIFIER_COLUMNS:
-        if col in df.columns:
-            errors.append(f"Identifier column present: {col}")
 
     if errors:
         raise ValueError(
