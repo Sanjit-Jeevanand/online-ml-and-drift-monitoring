@@ -3,6 +3,7 @@ from typing import Dict, Any
 from datetime import datetime
 import json
 import joblib
+import numpy as np
 
 
 # ============================================================
@@ -17,16 +18,10 @@ REGISTRY_BASE_DIR = Path("artifacts/models")
 # ============================================================
 
 def _version_dir(model_name: str, version: str) -> Path:
-    """
-    Resolve the directory for a given model name and version.
-    """
     return REGISTRY_BASE_DIR / model_name / version
 
 
 def _ensure_not_exists(path: Path) -> None:
-    """
-    Prevent accidental overwrites of immutable artifacts.
-    """
     if path.exists():
         raise FileExistsError(
             f"Model version already exists and is immutable: {path}"
@@ -51,12 +46,6 @@ def register_model(
     calibration: Dict[str, Any],
     metadata: Dict[str, Any],
 ) -> Path:
-    """
-    Register a trained model and all associated artifacts
-    under a semantic version.
-
-    This operation is IMMUTABLE.
-    """
 
     version_path = _version_dir(model_name, version)
     _ensure_not_exists(version_path)
@@ -73,9 +62,6 @@ def register_model(
     with open(version_path / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)
 
-    # calibration expected as numpy-friendly dict
-    # e.g. {"mean_predicted_value": ..., "fraction_of_positives": ...}
-    import numpy as np
     np.savez(version_path / "calibration.npz", **calibration)
 
     # --------------------------------------------------------
@@ -92,7 +78,6 @@ def register_model(
     with open(version_path / "metadata.json", "w") as f:
         json.dump(enriched_metadata, f, indent=2)
 
-    # Optional human-readable summary
     with open(version_path / "README.md", "w") as f:
         f.write(f"# Model Artifact\n\n")
         f.write(f"- Model: {model_name}\n")
@@ -111,9 +96,6 @@ def load_model(
     model_name: str,
     version: str,
 ):
-    """
-    Load a specific model version and its preprocessor.
-    """
 
     version_path = _version_dir(model_name, version)
 
@@ -133,9 +115,6 @@ def load_metadata(
     model_name: str,
     version: str,
 ) -> Dict[str, Any]:
-    """
-    Load metadata for a specific model version.
-    """
 
     version_path = _version_dir(model_name, version)
     metadata_path = version_path / "metadata.json"
@@ -150,9 +129,6 @@ def load_metadata(
 
 
 def list_versions(model_name: str) -> list[str]:
-    """
-    List all registered versions for a given model.
-    """
 
     model_dir = REGISTRY_BASE_DIR / model_name
     if not model_dir.exists():
