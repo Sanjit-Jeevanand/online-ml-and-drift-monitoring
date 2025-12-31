@@ -62,9 +62,6 @@ def load_openml_credit_default(
     # 🔒 VALIDATE RAW SCHEMA HERE (before renaming)
     validate_schema(df)
 
-    # Rename target
-    df = df.rename(columns={"y": "default_flag"})
-
     # Apply semantic feature mapping
     if apply_semantic_mapping:
         df = df.rename(columns=RAW_TO_SEMANTIC_COLUMN_MAP)

@@ -46,6 +46,7 @@ def main() -> None:
         print("Loading raw dataset...")
         df = load_openml_credit_default(RAW_DATA_PATH)
 
+
         print("Validating data integrity...")
         validate_data(df)
 
