@@ -1,15 +1,3 @@
-"""
-Feature contract for the credit default prediction system.
-
-This file is the single source of truth for:
-- which columns are features
-- their semantic types
-- which columns are forbidden
-- what is allowed to reach the model
-
-All training, inference, and monitoring code must respect this contract.
-"""
-
 from typing import List, Dict
 
 
