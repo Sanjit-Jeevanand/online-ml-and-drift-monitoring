@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from src.models.registry import load_model, load_metadata
-from src.features.contracts import load_feature_contract
+from src.features.metadata import load_feature_metadata_file as load_feature_contract
 
 
 # ============================================================
@@ -48,8 +48,8 @@ class Predictor:
 
         self.feature_contract = load_feature_contract(feature_contract_path)
 
-        self.feature_names = self.feature_contract["feature_names"]
-        self.feature_types = self.feature_contract["feature_types"]
+        self.feature_names = self.feature_contract.feature_names
+        self.feature_types = self.feature_contract.feature_types
 
         # ----------------------------------------------------
         # Sanity checks
@@ -85,8 +85,12 @@ class Predictor:
 
     def _prepare_input(self, raw_input: Dict[str, Any]) -> pd.DataFrame:
 
-        missing = [f for f in self.feature_names if f not in raw_input]
-        extra = [k for k in raw_input.keys() if k not in self.feature_names]
+        from src.features.contracts import ALL_FEATURES, FORBIDDEN_COLUMNS
+
+        clean_input = {k: v for k, v in raw_input.items() if k not in FORBIDDEN_COLUMNS}
+
+        missing = [f for f in ALL_FEATURES if f not in clean_input]
+        extra = [k for k in clean_input.keys() if k not in ALL_FEATURES]
 
         if missing:
             raise ValueError(f"Missing required features: {missing}")
@@ -95,26 +99,26 @@ class Predictor:
             raise ValueError(f"Unexpected extra features: {extra}")
 
         row = {}
-        for name, ftype in zip(self.feature_names, self.feature_types):
-            value = raw_input[name]
+        for name in ALL_FEATURES:
+            value = clean_input[name]
 
-            if ftype == "numeric":
-                try:
-                    value = float(value)
-                except Exception:
-                    raise ValueError(
-                        f"Feature '{name}' must be numeric; got {value!r}"
-                    )
+            # All raw features are numeric in this dataset
+            try:
+                value = float(value)
+            except Exception:
+                raise ValueError(
+                    f"Feature '{name}' must be numeric; got {value!r}"
+                )
 
             row[name] = value
 
-        df = pd.DataFrame([row], columns=self.feature_names)
+        df = pd.DataFrame([row], columns=ALL_FEATURES)
 
         return df
 
     def _validate_artifact_compatibility(self) -> None:
 
-        contract_version = self.feature_contract.get("version")
+        contract_version = self.feature_contract.version
         artifact_contract = (
             self.metadata
             .get("feature_contract", {})
