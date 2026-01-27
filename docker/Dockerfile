@@ -1,6 +1,7 @@
 FROM python:3.12-slim
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -17,6 +18,6 @@ COPY docker /app/docker
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
-EXPOSE 8000
+EXPOSE 8080
 
-ENTRYPOINT ["/app/docker/entrypoint.sh"]
+CMD ["sh", "-c", "echo '=== CONTAINER STARTED ===' && python -c \"import src.inference.service; print('=== IMPORT OK ===')\" && uvicorn src.inference.service:app --host 0.0.0.0 --port ${PORT:-8000}"]

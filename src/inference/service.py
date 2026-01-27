@@ -8,6 +8,11 @@ from fastapi.responses import JSONResponse
 from src.inference.predictor import Predictor
 from src.inference.schemas import PredictRequest, PredictResponse
 
+import threading
+
+_predictor = None
+_predictor_lock = threading.Lock()
+
 
 # ============================================================
 # App
@@ -18,22 +23,6 @@ app = FastAPI(
     description="Serves real-time risk predictions.",
     version="0.1.0",
 )
-
-
-# ============================================================
-# Startup hook
-# ============================================================
-
-@app.on_event("startup")
-def load_predictor() -> None:
-
-    model_name = "lightgbm"
-    model_version = "v1.1.0"
-
-    app.state.predictor = Predictor(
-        model_name=model_name,
-        model_version=model_version,
-    )
 
 
 # ============================================================
@@ -55,17 +44,33 @@ def log_event(payload: Dict) -> None:
         )
 
 
+def get_predictor() -> Predictor:
+    global _predictor
+
+    if _predictor is None:
+        with _predictor_lock:
+            if _predictor is None:
+                model_name = "lightgbm"
+                model_version = "v1.1.0"
+
+                _predictor = Predictor(
+                    model_name=model_name,
+                    model_version=model_version,
+                )
+
+    return _predictor
+
+
 # ============================================================
 # Routes
 # ============================================================
 
 @app.get("/health")
-def health_check() -> Dict[str, str]:
-
+def health():
     return {
         "status": "ok",
         "service": "inference",
-        "version": "dev",
+        "version": "aws-debug-2026-01-27-20-25"
     }
 
 
@@ -74,7 +79,7 @@ def predict(request: PredictRequest) -> PredictResponse:
 
     request_start = time.perf_counter()
 
-    predictor: Predictor = app.state.predictor
+    predictor: Predictor = get_predictor()
 
     status = "success"
     inference_ms = None
