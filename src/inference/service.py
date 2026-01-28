@@ -8,10 +8,19 @@ from fastapi.responses import JSONResponse
 from src.inference.predictor import Predictor
 from src.inference.schemas import PredictRequest, PredictResponse
 
-import threading
+from src.monitoring.builders import build_inference_log_event
+from src.monitoring.sinks import StdoutSink, JsonlFileSink, MultiSink
+from src.features.contracts import ALL_FEATURES
+from pathlib import Path
 
-_predictor = None
-_predictor_lock = threading.Lock()
+
+# ============================================================
+# Globals
+# ============================================================
+
+
+# Global sink holder
+LOG_SINK = None
 
 
 # ============================================================
@@ -26,39 +35,31 @@ app = FastAPI(
 
 
 # ============================================================
-# Logging helper
+# Startup hook
 # ============================================================
 
-def log_event(payload: Dict) -> None:
+@app.on_event("startup")
+def load_predictor() -> None:
+    global LOG_SINK
 
-    try:
-        print(json.dumps(payload), flush=True)
-    except Exception:
-        print(
-            json.dumps({
-                "event": "logging_failed",
-                "status": "error"
-            }),
-            file=sys.stderr,
-            flush=True
-        )
+    model_name = "lightgbm"
+    model_version = "v1.1.0"
+
+    app.state.predictor = Predictor(
+        model_name=model_name,
+        model_version=model_version,
+    )
+
+    LOG_SINK = MultiSink(
+        sinks=[
+            StdoutSink(),
+            JsonlFileSink(Path("logs/inference.jsonl")),
+        ]
+    )
 
 
-def get_predictor() -> Predictor:
-    global _predictor
 
-    if _predictor is None:
-        with _predictor_lock:
-            if _predictor is None:
-                model_name = "lightgbm"
-                model_version = "v1.1.0"
 
-                _predictor = Predictor(
-                    model_name=model_name,
-                    model_version=model_version,
-                )
-
-    return _predictor
 
 
 # ============================================================
@@ -79,7 +80,9 @@ def predict(request: PredictRequest) -> PredictResponse:
 
     request_start = time.perf_counter()
 
-    predictor: Predictor = get_predictor()
+    predictor: Predictor = app.state.predictor
+
+    expected_features = ALL_FEATURES
 
     status = "success"
     inference_ms = None
@@ -106,6 +109,17 @@ def predict(request: PredictRequest) -> PredictResponse:
             predicted_probability=proba,
         )
 
+        LOG_SINK.emit(build_inference_log_event(
+            model_name=predictor.model_name,
+            model_version=predictor.model_version,
+            raw_features=request.features,
+            expected_features=expected_features,
+            predicted_probability=proba,
+            latency_ms=(time.perf_counter() - request_start) * 1000.0,
+            inference_ms=inference_ms,
+            status="success",
+        ).to_dict())
+
         return response
 
     # ---------------------------------------------------------
@@ -122,11 +136,17 @@ def predict(request: PredictRequest) -> PredictResponse:
             "model_version": predictor.model_version,
         }
 
-        log_event({
-            "event": "inference_error",
-            "status": status,
-            **error_payload,
-        })
+        LOG_SINK.emit(build_inference_log_event(
+            model_name=predictor.model_name,
+            model_version=predictor.model_version,
+            raw_features=request.features,
+            expected_features=expected_features,
+            predicted_probability=None,
+            latency_ms=(time.perf_counter() - request_start) * 1000.0,
+            inference_ms=None,
+            status="client_error",
+            error=e,
+        ).to_dict())
 
         return JSONResponse(
             status_code=400,
@@ -147,30 +167,19 @@ def predict(request: PredictRequest) -> PredictResponse:
             "model_version": predictor.model_version,
         }
 
-        log_event({
-            "event": "inference_error",
-            "status": status,
-            **error_payload,
-        })
+        LOG_SINK.emit(build_inference_log_event(
+            model_name=predictor.model_name,
+            model_version=predictor.model_version,
+            raw_features=request.features,
+            expected_features=expected_features,
+            predicted_probability=None,
+            latency_ms=(time.perf_counter() - request_start) * 1000.0,
+            inference_ms=None,
+            status="server_error",
+            error=e,
+        ).to_dict())
 
         return JSONResponse(
             status_code=500,
             content=error_payload,
         )
-
-    finally:
-        # -----------------------------
-        # Final latency + logging
-        # -----------------------------
-
-        request_end = time.perf_counter()
-        latency_ms = (request_end - request_start) * 1000.0
-
-        log_event({
-            "event": "inference_request",
-            "model_name": predictor.model_name,
-            "model_version": predictor.model_version,
-            "status": status,
-            "latency_ms": round(latency_ms, 3),
-            "inference_ms": round(inference_ms, 3) if inference_ms is not None else None,
-        })
