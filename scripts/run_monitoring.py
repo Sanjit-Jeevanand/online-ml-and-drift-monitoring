@@ -78,9 +78,9 @@ def main() -> None:
         ks_metrics=ks,
         psi_metrics=psi,
         prediction_metrics=pred,
-        baseline_prediction_stats=baseline_snapshot["predictions"],
-        baseline_volume=baseline_snapshot["volume"]["n_requests"],
-        current_volume=current_snapshot["volume"]["n_requests"],
+        baseline_prediction_stats=baseline_snapshot.get("predictions"),
+        baseline_volume=baseline_snapshot.get("volume", {}).get("n_requests"),
+        current_volume=current_snapshot.get("volume", {}).get("n_requests"),
     )
 
     DECISION_PATH.parent.mkdir(parents=True, exist_ok=True)

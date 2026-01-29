@@ -1,0 +1,8 @@
+{
+  "triggered_at": "2026-01-29T15:57:43.396487+00:00",
+  "decision": "RETRAIN_RECOMMENDED",
+  "severity": "high",
+  "reasons": [
+    "Insufficient or unstable traffic volume"
+  ]
+}

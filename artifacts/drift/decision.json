@@ -1,0 +1,7 @@
+{
+  "decision": "RETRAIN_RECOMMENDED",
+  "severity": "high",
+  "reasons": [
+    "Insufficient or unstable traffic volume"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "model_name": "lightgbm",
+  "model_version": "v1.2.0",
+  "promoted_at": "2026-01-29T16:22:47.202191",
+  "promotion_decision": "PROMOTE",
+  "promotion_reasons": [
+    "roc_auc improved by 0.056697",
+    "pr_auc improved by 0.072928",
+    "brier_score degraded by -0.028169"
+  ]
+}

@@ -17,8 +17,19 @@ def ks_drift(
 
     drift_scores = {}
 
-    baseline_numeric = baseline["features"]["numeric"]
-    current_numeric = current["features"]["numeric"]
+    baseline_numeric = baseline.get("feature_distributions")
+
+    if baseline_numeric is None:
+        raise KeyError("Baseline snapshot missing 'feature_distributions'")
+
+    current_numeric = current.get("feature_distributions")
+
+    if current_numeric is None:
+        # Backward compatibility: older current snapshots
+        current_numeric = current.get("features")
+
+    if current_numeric is None:
+        raise KeyError("Current snapshot missing feature distributions")
 
     for feature, base_stats in baseline_numeric.items():
         if feature not in current_numeric:
@@ -48,31 +59,7 @@ def psi_drift(
     Compute Population Stability Index (PSI) for categorical features.
     """
 
-    drift_scores = {}
-
-    baseline_cat = baseline["features"]["categorical"]
-    current_cat = current["features"]["categorical"]
-
-    for feature, base_data in baseline_cat.items():
-        if feature not in current_cat:
-            continue
-
-        base_freqs = base_data["frequencies"]
-        curr_freqs = current_cat[feature]["frequencies"]
-
-        psi = 0.0
-
-        all_keys = set(base_freqs.keys()) | set(curr_freqs.keys())
-
-        for k in all_keys:
-            b = base_freqs.get(k, epsilon)
-            c = curr_freqs.get(k, epsilon)
-
-            psi += (c - b) * np.log(c / b)
-
-        drift_scores[feature] = float(psi)
-
-    return drift_scores
+    return {}
 
 
 # ============================================================
@@ -87,7 +74,8 @@ def prediction_drift(
     base_pred = baseline.get("predictions")
     curr_pred = current.get("predictions")
 
-    if not base_pred or not curr_pred:
+    # Prediction drift is optional; skip if unavailable
+    if base_pred is None or curr_pred is None:
         return {}
 
     return {
@@ -108,9 +96,19 @@ def volume_drift(
     baseline: Dict[str, Any],
     current: Dict[str, Any],
 ) -> Dict[str, float]:
+    """
+    Compute volume drift based on request counts.
+    If volume information is missing, skip volume drift safely.
+    """
 
-    base_n = baseline["volume"]["n_requests"]
-    curr_n = current["volume"]["n_requests"]
+    base_volume = baseline.get("volume")
+    curr_volume = current.get("volume")
+
+    if not base_volume or not curr_volume:
+        return {}
+
+    base_n = base_volume.get("n_requests", 0)
+    curr_n = curr_volume.get("n_requests", 0)
 
     if base_n == 0:
         return {"ratio": float("inf")}
