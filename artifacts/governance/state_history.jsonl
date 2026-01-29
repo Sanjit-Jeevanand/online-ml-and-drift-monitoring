@@ -1,0 +1,1 @@
+{"from_state": "SHADOWING", "to_state": "PROMOTABLE", "decision": "MANUAL_OVERRIDE", "reasons": ["Manual override applied", "Approved by: ml-lead@company.com", "Business urgency \u2014 shadow metrics acceptable"], "model_name": "lightgbm", "model_version": "candidate-20260129-182120", "applied_at": "2026-01-29T21:06:08.868357+00:00"}

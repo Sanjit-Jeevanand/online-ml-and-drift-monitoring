@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 PROD_CONFIG = Path("config/production_model.json")
 CANDIDATE_DIR = Path("artifacts/models/candidate")
 MODEL_ROOT = Path("artifacts/models/lightgbm")
+GOVERNANCE_STATE = Path("artifacts/governance/state.json")
 
 
 def parse_version(version: str):
@@ -45,6 +46,20 @@ def main() -> None:
         raise FileNotFoundError("Missing candidate evaluation.json")
 
     evaluation = json.loads(eval_path.read_text())
+
+    # --------------------------------------------------
+    # Governance gate
+    # --------------------------------------------------
+    if not GOVERNANCE_STATE.exists():
+        raise RuntimeError("Missing governance state.json — promotion forbidden.")
+
+    governance = json.loads(GOVERNANCE_STATE.read_text())
+    current_state = governance.get("state")
+
+    if current_state != "PROMOTABLE":
+        raise RuntimeError(
+            f"Promotion blocked by governance. Current state: {current_state}"
+        )
 
     if evaluation.get("decision") != "PROMOTE":
         print("Candidate not approved for promotion.")
@@ -121,6 +136,15 @@ def main() -> None:
 
     shutil.rmtree(CANDIDATE_DIR)
     CANDIDATE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # --------------------------------------------------
+    # 7. Update governance state to PRODUCTION
+    # --------------------------------------------------
+    governance["state"] = "PRODUCTION"
+    governance["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    with GOVERNANCE_STATE.open("w") as f:
+        json.dump(governance, f, indent=2)
 
     print(f"Model promoted successfully → {new_version}")
 

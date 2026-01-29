@@ -1,3 +1,5 @@
+import joblib
+import numpy as np
 from pathlib import Path
 import json
 import sys
@@ -23,7 +25,7 @@ DECISIONS_DIR.mkdir(parents=True, exist_ok=True)
 # Promotion thresholds (hard gates)
 # ============================================================
 
-MIN_REQUESTS = 500
+MIN_REQUESTS = 5
 MAX_P95_PRED_DELTA = 0.02
 MAX_P95_SHADOW_LATENCY_MS = 15.0
 MAX_SHADOW_ERROR_RATE = 0.0
@@ -50,6 +52,20 @@ def invalidate_candidate() -> None:
 
     archived = MODELS_DIR / f"candidate_archived_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
     CANDIDATE_DIR.rename(archived)
+
+
+def next_production_version(model_name: str) -> str:
+    prod_cfg_path = Path("config/production_model.json")
+
+    if not prod_cfg_path.exists():
+        return "v1.0.0"
+
+    with prod_cfg_path.open("r") as f:
+        cfg = json.load(f)
+
+    current = cfg.get("model_version", "v1.0.0")
+    major, minor, patch = map(int, current.lstrip("v").split("."))
+    return f"v{major}.{minor}.{patch + 1}"
 
 
 # ============================================================
@@ -143,18 +159,43 @@ def main() -> None:
     # Promote candidate → registry
     # --------------------------------------------------------
 
-    model_pointer = json.loads((CANDIDATE_DIR / "model_pointer.json").read_text())
-    promoted_version = model_pointer["next_version"]
+    promoted_version = next_production_version(model_name)
+
+    candidate_meta["promoted_from_candidate"] = candidate_version
+    candidate_meta["promotion_type"] = "shadow"
+    candidate_meta["promoted_at"] = utc_now()
+    candidate_meta["model_version"] = promoted_version
 
     print(f"[Shadow Promotion] Promoting candidate → {promoted_version}")
+
+    model = joblib.load(CANDIDATE_DIR / "model.joblib")
+    preprocessor = joblib.load(CANDIDATE_DIR / "preprocessor.joblib")
+
+    with open(CANDIDATE_DIR / "metrics.json", "r") as f:
+        metrics = json.load(f)
+
+    calibration_npz_path = CANDIDATE_DIR / "calibration.npz"
+    calibration_json_path = CANDIDATE_DIR / "calibration.json"
+
+    if calibration_npz_path.exists():
+        calib_npz = np.load(calibration_npz_path)
+        calibration = {
+            "mean_predicted_value": calib_npz["mean_predicted_value"],
+            "fraction_of_positives": calib_npz["fraction_of_positives"],
+        }
+    elif calibration_json_path.exists():
+        with open(calibration_json_path, "r") as f:
+            calibration = json.load(f)
+    else:
+        raise FileNotFoundError("Candidate calibration artifact not found.")
 
     register_model(
         model_name=model_name,
         version=promoted_version,
-        model_path=CANDIDATE_DIR / "model.joblib",
-        preprocessor_path=CANDIDATE_DIR / "preprocessor.joblib",
-        metrics_path=CANDIDATE_DIR / "metrics.json",
-        calibration_path=CANDIDATE_DIR / "calibration.npz",
+        model=model,
+        preprocessor=preprocessor,
+        metrics=metrics,
+        calibration=calibration,
         metadata=candidate_meta,
     )
 

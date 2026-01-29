@@ -1,0 +1,13 @@
+{
+  "decision": "NO_OP",
+  "current_state": "PROMOTABLE",
+  "next_state": "PROMOTABLE",
+  "allowed_transitions": [],
+  "blocked_transitions": [],
+  "reasons": [
+    "No automated transitions defined for state 'PROMOTABLE'"
+  ],
+  "model_name": "lightgbm",
+  "model_version": "candidate-20260129-182120",
+  "evaluated_at": "2026-01-29T21:45:20.542444+00:00"
+}

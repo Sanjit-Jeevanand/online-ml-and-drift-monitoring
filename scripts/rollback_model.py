@@ -3,6 +3,9 @@ import json
 import sys
 from datetime import datetime
 
+from src.governance.controller import run_governance_controller
+from src.governance.state_transition import apply_state_transition
+
 
 PROD_CONFIG = Path("config/production_model.json")
 MODEL_ROOT = Path("artifacts/models/lightgbm")
@@ -22,6 +25,22 @@ def main() -> None:
 
     prod_cfg = json.loads(PROD_CONFIG.read_text())
     current_version = prod_cfg["model_version"]
+
+    # --------------------------------------------------
+    # Governance check: is rollback allowed?
+    # --------------------------------------------------
+
+    decision = run_governance_controller(action="ROLLBACK")
+
+    if decision["decision"] == "BLOCK":
+        print("Rollback blocked by governance.")
+        for r in decision.get("reasons", []):
+            print(f" - {r}")
+        return
+
+    if decision["decision"] not in ("ALLOW", "MANUAL_OVERRIDE"):
+        print(f"Rollback not permitted in state: {decision['current_state']}")
+        return
 
     # --------------------------------------------------
     # 2. Discover available versions
@@ -44,6 +63,21 @@ def main() -> None:
         return
 
     rollback_version = versions[current_idx - 1]
+
+    # --------------------------------------------------
+    # Apply state transition for rollback
+    # --------------------------------------------------
+
+    transition = apply_state_transition(
+        action="ROLLBACK",
+        model_name=prod_cfg["model_name"],
+        model_version=rollback_version,
+    )
+
+    if not transition.get("applied"):
+        print("Rollback state transition failed.")
+        print(transition)
+        return
 
     # --------------------------------------------------
     # 3. Perform rollback (pointer update only)
