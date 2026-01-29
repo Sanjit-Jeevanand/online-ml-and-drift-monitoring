@@ -64,10 +64,14 @@ def save_model_artifacts(
     *,
     calibration: Dict[str, Any] | None = None,
     metadata: Dict[str, Any] | None = None,
+    preprocessor: Any | None = None,
 ) -> None:
     base_dir.mkdir(parents=True, exist_ok=True)
     save_model(model, base_dir / "model.joblib")
     save_metrics(metrics, base_dir / "metrics.json")
+
+    if preprocessor is not None:
+        joblib.dump(preprocessor, base_dir / "preprocessor.joblib")
 
     if calibration is not None:
         serializable_calibration = {
@@ -90,6 +94,10 @@ def load_model_artifacts(
         "model": load_model(base_dir / "model.joblib"),
         "metrics": load_metrics(base_dir / "metrics.json"),
     }
+
+    preprocessor_path = base_dir / "preprocessor.joblib"
+    if preprocessor_path.exists():
+        artifacts["preprocessor"] = joblib.load(preprocessor_path)
 
     calibration_path = base_dir / "calibration.json"
     if calibration_path.exists():

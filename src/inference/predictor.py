@@ -1,6 +1,8 @@
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
+import joblib
+import json
 import numpy as np
 import pandas as pd
 
@@ -17,30 +19,53 @@ class Predictor:
     def __init__(
         self,
         *,
-        model_name: str,
-        model_version: str,
+        model_name: Optional[str] = None,
+        model_version: Optional[str] = None,
+        artifact_path: Optional[Path] = None,
         feature_contract_path: Path = Path("artifacts/features/feature_metadata.json"),
     ) -> None:
-        self.model_name = model_name
-        self.model_version = model_version
+        if artifact_path is not None:
+            if model_name is not None or model_version is not None:
+                raise ValueError("Provide either artifact_path or model_name and model_version, not both.")
+            # Load model and preprocessor from artifact path
+            model_file = artifact_path / "model.joblib"
+            preprocessor_file = artifact_path / "preprocessor.joblib"
+            metadata_file = artifact_path / "metadata.json"
 
-        # ----------------------------------------------------
-        # Load model + preprocessor from registry
-        # ----------------------------------------------------
+            self.model = joblib.load(model_file)
+            self.preprocessor = joblib.load(preprocessor_file)
 
-        self.model, self.preprocessor = load_model(
-            model_name=model_name,
-            version=model_version,
-        )
+            with open(metadata_file, "r") as f:
+                self.metadata = json.load(f)
 
-        # ----------------------------------------------------
-        # Load metadata (lineage + sanity checks)
-        # ----------------------------------------------------
+            self.model_name = self.metadata.get("model_name")
+            self.model_version = self.metadata.get("model_version")
 
-        self.metadata = load_metadata(
-            model_name=model_name,
-            version=model_version,
-        )
+            if self.model_name is None or self.model_version is None:
+                raise ValueError("Metadata missing model_name or model_version fields.")
+        else:
+            if model_name is None or model_version is None:
+                raise ValueError("Must provide either artifact_path or both model_name and model_version.")
+            self.model_name = model_name
+            self.model_version = model_version
+
+            # ----------------------------------------------------
+            # Load model + preprocessor from registry
+            # ----------------------------------------------------
+
+            self.model, self.preprocessor = load_model(
+                model_name=model_name,
+                version=model_version,
+            )
+
+            # ----------------------------------------------------
+            # Load metadata (lineage + sanity checks)
+            # ----------------------------------------------------
+
+            self.metadata = load_metadata(
+                model_name=model_name,
+                version=model_version,
+            )
 
         # ----------------------------------------------------
         # Load feature contract

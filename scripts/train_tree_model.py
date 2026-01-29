@@ -75,8 +75,8 @@ def main() -> None:
             model = train_xgboost(
                 X_train,
                 y_train,
-                n_estimators=30,
-                max_depth=2,
+                n_estimators=300,
+                max_depth=5,
                 learning_rate=0.05,
                 subsample=0.8,
                 colsample_bytree=0.8,
@@ -85,7 +85,7 @@ def main() -> None:
             model = train_lightgbm(
                 X_train,
                 y_train,
-                n_estimators=3,
+                n_estimators=300,
                 num_leaves=args.num_leaves,
                 max_depth=args.max_depth,
                 min_child_samples=args.min_child_samples,

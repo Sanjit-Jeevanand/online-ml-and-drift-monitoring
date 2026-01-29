@@ -10,7 +10,7 @@ from src.models.evaluation import (
     evaluate_binary_classifier,
     compute_calibration_data,
 )
-from src.models.artifacts import save_model_artifacts
+from src.models.artifacts import save_model_artifacts, load_model
 
 # --------------------------------------------------
 # Paths
@@ -20,6 +20,7 @@ RETRAIN_SIGNAL_PATH = Path("artifacts/drift/retrain_signal.json")
 FEATURES_DIR = Path("artifacts/features")
 LABELS_DIR = Path("artifacts/labels")
 CANDIDATE_DIR = Path("artifacts/models/candidate")
+PROD_CONFIG_PATH = Path("config/production_model.json")
 
 # --------------------------------------------------
 # Main
@@ -40,6 +41,50 @@ def main() -> None:
 
     print("[Candidate Training] Retraining authorized.")
     print(f"[Candidate Training] Reason(s): {retrain_signal.get('reasons')}")
+
+    # --------------------------------------------------
+    # 2a. Load production preprocessor
+    # --------------------------------------------------
+
+    if not PROD_CONFIG_PATH.exists():
+        print("[Candidate Training] Missing production model config.")
+        sys.exit(1)
+
+    prod_cfg = json.loads(PROD_CONFIG_PATH.read_text())
+    prod_model_name = prod_cfg["model_name"]
+    prod_model_version = prod_cfg["model_version"]
+
+    prod_model_dir = Path("artifacts/models") / prod_model_name / prod_model_version
+    preprocessor_path = prod_model_dir / "preprocessor.joblib"
+
+    if not preprocessor_path.exists():
+        print("[Candidate Training] Production preprocessor not found.")
+        sys.exit(1)
+
+    # Load production metadata (for lineage validation only)
+    prod_metadata_path = prod_model_dir / "metadata.json"
+    if not prod_metadata_path.exists():
+        raise RuntimeError("Production metadata is required for candidate training.")
+
+    prod_metadata = json.loads(prod_metadata_path.read_text())
+    prod_feature_contract = prod_metadata.get("feature_contract")
+    if prod_feature_contract is None:
+        raise RuntimeError("Production metadata missing 'feature_contract'; lineage is broken.")
+
+    # Load feature contract from features/feature_metadata.json
+    feature_metadata_path = FEATURES_DIR / "feature_metadata.json"
+    if not feature_metadata_path.exists():
+        raise RuntimeError("Feature metadata file missing; cannot determine feature contract.")
+    feature_metadata = json.loads(feature_metadata_path.read_text())
+    feature_contract = feature_metadata.get("version")
+    if feature_contract is None:
+        raise RuntimeError("Feature metadata missing 'version' (feature contract hash).")
+
+    # Optional: warn if contract does not match prod lineage
+    if feature_contract != prod_feature_contract:
+        print("[Candidate Training] WARNING: Feature contract hash from feature_metadata.json does not match production metadata. Lineage may be broken.")
+
+    preprocessor = load_model(preprocessor_path)
 
     # --------------------------------------------------
     # 2. Load training data
@@ -103,11 +148,19 @@ def main() -> None:
     candidate_version = f"candidate-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
 
     metadata = {
+        "training_data": {
+            "source": prod_metadata["training_data"]["source"],
+            "end_index": prod_metadata["training_data"]["end_index"],
+        },
+        "feature_contract": {
+            "version": feature_metadata["version"],
+            "n_features": feature_metadata["n_features"],
+        },
+        "hyperparameters": model.get_params(),
+        "model_name": "lightgbm",
         "candidate_version": candidate_version,
         "trained_at": datetime.now(timezone.utc).isoformat(),
-        "trigger_reason": retrain_signal,
-        "model_family": "lightgbm",
-        "training_data": "offline_train_split",
+        "registered_at": datetime.now(timezone.utc).isoformat(),
     }
 
     print(f"[Candidate Training] Saving artifacts to {CANDIDATE_DIR}...")
@@ -119,6 +172,7 @@ def main() -> None:
         calibration=calibration,
         base_dir=CANDIDATE_DIR,
         metadata=metadata,
+        preprocessor=preprocessor,
     )
 
     readme = (

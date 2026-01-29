@@ -1,5 +1,5 @@
 {
-  "decision": "RETRAIN_RECOMMENDED",
+  "decision": "MONITOR",
   "severity": "high",
   "reasons": [
     "Insufficient or unstable traffic volume"

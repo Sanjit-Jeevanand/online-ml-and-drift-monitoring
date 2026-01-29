@@ -1,0 +1,15 @@
+{
+  "decision": "DO_NOT_PROMOTE",
+  "candidate_version": "candidate-20260129-191942",
+  "model_name": "lightgbm",
+  "timestamp_utc": "2026-01-29T19:19:48.134786+00:00",
+  "shadow_summary": {
+    "paired_requests": 15,
+    "p95_abs_prediction_delta": 0.0,
+    "p95_shadow_latency_ms": 6.671000000000001,
+    "shadow_error_rate": 0.0
+  },
+  "reasons": [
+    "Insufficient shadow traffic (15 < 500)"
+  ]
+}

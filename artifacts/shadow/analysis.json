@@ -1,0 +1,29 @@
+{
+  "analysis_window": {
+    "start": null,
+    "end": null
+  },
+  "counts": {
+    "paired_requests": 15
+  },
+  "prediction_comparison": {
+    "mean_delta": 0.0,
+    "median_delta": 0.0,
+    "p95_abs_delta": 0.0,
+    "outlier_pct": 0.0
+  },
+  "latency_comparison": {
+    "mean_delta_ms": 2.2702666666666667,
+    "p95_shadow_ms": 6.671000000000001
+  },
+  "error_rates": {
+    "production": 0.0,
+    "shadow": 0.0
+  },
+  "decision": {
+    "recommendation": "SAFE_TO_PROMOTE",
+    "severity": "low",
+    "reasons": []
+  },
+  "generated_at": "2026-01-29T19:19:48.129877+00:00"
+}

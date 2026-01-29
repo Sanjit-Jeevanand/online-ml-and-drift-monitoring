@@ -7,7 +7,7 @@ from src.models.artifacts import load_model
 from src.models.evaluation import evaluate_binary_classifier
 
 
-PROD_MODEL_DIR = Path("artifacts/models/lightgbm/v1.1.0")
+PROD_CONFIG = Path("config/production_model.json")
 CANDIDATE_DIR = Path("artifacts/models/candidate")
 
 X_VAL = Path("artifacts/features/X_val.npy")
@@ -22,11 +22,20 @@ def main() -> None:
     X_val = np.load(X_VAL, allow_pickle=True)
     y_val = np.load(Y_VAL, allow_pickle=True).astype(int)
 
+    with PROD_CONFIG.open("r") as f:
+        prod_cfg = json.load(f)
+
+    prod_model_dir = (
+        Path("artifacts/models")
+        / prod_cfg["model_name"]
+        / prod_cfg["model_version"]
+    )
+
     # --------------------------------------------------
     # 2. Load production model
     # --------------------------------------------------
 
-    prod_model = load_model(PROD_MODEL_DIR / "model.joblib")
+    prod_model = load_model(prod_model_dir / "model.joblib")
 
     # --------------------------------------------------
     # 3. Load candidate model

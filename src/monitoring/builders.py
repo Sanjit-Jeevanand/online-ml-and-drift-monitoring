@@ -103,10 +103,9 @@ def build_inference_log_event(
     latency_ms: float,
     inference_ms: Optional[float],
     status: str,
+    request_id: str,
     error: Optional[Exception] = None,
 ) -> InferenceLogEvent:
-
-    request_id = str(uuid.uuid4())
 
     input_summary = _build_input_summary(
         raw_features=raw_features,

@@ -69,6 +69,18 @@ def main() -> None:
 
     shutil.copytree(CANDIDATE_DIR, new_model_dir)
 
+    candidate_metadata_path = new_model_dir / "metadata.json"
+    if not candidate_metadata_path.exists():
+        raise RuntimeError("Candidate metadata.json is missing, cannot promote.")
+
+    candidate_metadata = json.loads(candidate_metadata_path.read_text())
+
+    feature_contract = candidate_metadata.get("feature_contract")
+    if not feature_contract:
+        raise RuntimeError(
+            "Promotion blocked: missing feature_contract in candidate metadata."
+        )
+
     # Remove evaluation-only files from production artifact
     eval_copy = new_model_dir / "evaluation.json"
     if eval_copy.exists():
@@ -81,6 +93,7 @@ def main() -> None:
     metadata = {
         "model_name": "lightgbm",
         "model_version": new_version,
+        "feature_contract": candidate_metadata["feature_contract"],
         "promoted_at": datetime.now(timezone.utc).isoformat(),
         "promotion_reason": evaluation.get("reasons"),
     }
