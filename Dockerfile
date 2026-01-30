@@ -13,7 +13,6 @@ COPY src /app/src
 COPY scripts /app/scripts
 COPY config /app/config
 COPY artifacts /app/artifacts
-COPY docker /app/docker
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
