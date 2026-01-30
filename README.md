@@ -13,33 +13,20 @@ This project demonstrates a **full ML lifecycle**, including drift detection, sh
 
 ## High-Level Architecture
 
-Data
-  ↓
-Validation
-  ↓
-Feature Contract
-  ↓
-Model Training (Baseline / Candidate)
-  ↓
-Versioned Model Registry
-  ↓
-Online Inference API
-  ↓
-Structured Logging
-  ↓
-Snapshot Aggregation
-  ↓
-Drift Detection
-  ↓
-Retraining Decision
-  ↓
-Candidate Evaluation
-  ↓
-Shadow Deployment
-  ↓
-Governance State Machine
-  ↓
-Autonomous Promotion / Rollback
+  → Data
+  → Validation
+  → Feature Contract
+  → Model Training (Baseline / Candidate)
+  → Versioned Model Registry
+  → Online Inference API
+  → Structured Logging
+  → Snapshot Aggregation
+  → Drift Detection
+  → Retraining Decision
+  → Candidate Evaluation
+  → Shadow Deployment
+  → Governance State Machine
+  → Autonomous Promotion / Rollback
 
 Everything is **artifact-driven**, immutable, and auditable.
 
@@ -62,38 +49,38 @@ Everything is **artifact-driven**, immutable, and auditable.
 
 online-ml-and-drift-monitoring/
 │
-├── artifacts/                  # Immutable system outputs (source of truth)
-│   ├── features/               # Frozen feature matrices + metadata
-│   ├── models/                 # Versioned model registry
+├── artifacts/            # Immutable system outputs (source of truth)
+│   ├── features/         # Frozen feature matrices + metadata
+│   ├── models/           # Versioned model registry
 │   │   ├── baseline/
 │   │   ├── xgboost/
 │   │   └── lightgbm/
 │   │       ├── v1.0.0/
 │   │       └── v1.0.1/
-│   ├── drift/                  # Drift metrics & retraining decisions
-│   ├── shadow/                 # Shadow evaluation & promotion decisions
-│   └── governance/             # Governance state & transition history
+│   ├── drift/            # Drift metrics & retraining decisions
+│   ├── shadow/           # Shadow evaluation & promotion decisions
+│   └── governance/       # Governance state & transition history
 │
 │
-├── config/                     # Declarative system configuration
+├── config/               # Declarative system configuration
 │   ├── features.yaml
 │   ├── model.yaml
 │   ├── drift.yaml
 │   ├── service.yaml
 │   └── data.yaml
 │
-├── data/                       # Raw and validated datasets
+├── data/                 # Raw and validated datasets
 │   ├── raw/
 │   └── interim/
 │       └── splits/
 │
-├── docker/                     # Container build context (support files)
+├── docker/               # Container build context (support files)
 │
-├── logs/                       # Structured inference logs (jsonl)
+├── logs/                 # Structured inference logs (jsonl)
 │
-├── notebooks/                  # Exploration (non-production)
+├── notebooks/            # Exploration (non-production)
 │
-├── scripts/                    # Executable workflows (entry points)
+├── scripts/              # Executable workflows (entry points)
 │   ├── ingest_data.py
 │   ├── build_features.py
 │   ├── train_baseline.py
@@ -103,21 +90,21 @@ online-ml-and-drift-monitoring/
 │   ├── execute_promotion.py
 │   └── auto_governance_runner.py
 │
-├── snapshots/                  # Baseline and current monitoring snapshots
+├── snapshots/            # Baseline & current monitoring snapshots
 │
-├── src/                        # Core system logic (library code)
-│   ├── data/                   # Loading, validation, splitting
-│   ├── features/               # Feature contracts & preprocessing
-│   ├── models/                 # Training, evaluation, registry
-│   ├── inference/              # Online prediction service
-│   ├── monitoring/             # Logging, aggregation, drift detection
-│   ├── retraining/             # Retraining policy & triggers
-│   └── governance/             # State machine & transition rules
+├── src/                  # Core system logic (library code)
+│   ├── data/             # Loading, validation, splitting
+│   ├── features/         # Feature contracts & preprocessing
+│   ├── models/           # Training, evaluation, registry
+│   ├── inference/        # Online prediction service
+│   ├── monitoring/       # Logging, aggregation, drift detection
+│   ├── retraining/       # Retraining policy & triggers
+│   └── governance/       # State machine & transition rules
 │
-├── tests/                      # Contract & pipeline tests
+├── tests/                # Contract & pipeline tests
 │
-├── Dockerfile                  # Production container
-├── pyproject.toml              # Project & dependency definition
+├── Dockerfile            # Production container
+├── pyproject.toml        # Project & dependency definition
 └── README.md
 
 Artifacts are **never overwritten**. Promotion creates new versions.
