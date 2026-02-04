@@ -3,6 +3,9 @@
 This repository implements a **production-oriented machine learning system** that goes far beyond model training.  
 Its core goal is not peak offline accuracy, but **trustworthy, observable, and governable ML behavior over time**.
 
+- **DEMO (AWS):** https://d4na84yf0dizj.cloudfront.net
+- **Architecture:** https://d2j57k0xgksz8l.cloudfront.net
+
 The system is designed to answer a hard real-world question:
 
 > *How do you safely deploy, monitor, retrain, evaluate, and promote machine learning models in a non-stationary environment — without breaking production?*
