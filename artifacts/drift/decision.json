@@ -1,7 +1,7 @@
 {
   "decision": "MONITOR",
-  "severity": "high",
+  "severity": "low",
   "reasons": [
-    "Insufficient or unstable traffic volume"
+    "Moderate drift accumulating in features: ['BILL_AMT2', 'MARRIAGE_1.0', 'PAY_5', 'PAY_6']"
   ]
 }

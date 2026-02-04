@@ -13,7 +13,7 @@ DriftLevel = Literal["none", "low", "medium", "high"]
 # ============================================================
 
 KS_THRESHOLDS = {
-    "low": 0.10,
+    "low": 0.05,
     "medium": 0.20,
 }
 
@@ -91,14 +91,18 @@ VOLUME_THRESHOLDS = {
 
 
 def classify_volume_drift(
-    baseline_n: int,
+    baseline_n: int | None,
     current_n: int,
 ) -> DriftLevel:
+
+    # No baseline → cannot assess volume reliably
+    if baseline_n is None or baseline_n <= 0:
+        return "high"
 
     if current_n < VOLUME_THRESHOLDS["min_samples"]:
         return "high"  # insufficient data
 
-    ratio = current_n / max(baseline_n, 1)
+    ratio = current_n / baseline_n
 
     if ratio < VOLUME_THRESHOLDS["drop_ratio"]:
         return "high"

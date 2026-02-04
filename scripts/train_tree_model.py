@@ -85,7 +85,7 @@ def main() -> None:
             model = train_lightgbm(
                 X_train,
                 y_train,
-                n_estimators=300,
+                n_estimators=30,
                 num_leaves=args.num_leaves,
                 max_depth=args.max_depth,
                 min_child_samples=args.min_child_samples,

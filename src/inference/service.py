@@ -123,6 +123,38 @@ def predict(request: PredictRequest) -> PredictResponse:
         inference_ms = (inference_end - inference_start) * 1000.0
 
         # -----------------------------
+        # Shadow inference (non-blocking)
+        # -----------------------------
+
+        shadow_data = None
+        if shadow_predictor is not None:
+            try:
+                shadow_inference_start = time.perf_counter()
+                shadow_proba = shadow_predictor.predict_proba(request.features)
+                shadow_inference_end = time.perf_counter()
+                shadow_inference_ms = (shadow_inference_end - shadow_inference_start) * 1000.0
+
+                shadow_data = {
+                    "model": {
+                        "name": shadow_predictor.model_name,
+                        "version": shadow_predictor.model_version,
+                    },
+                    "predicted_probability": shadow_proba,
+                    "latency_ms": (time.perf_counter() - request_start) * 1000.0,
+                    "error": False,
+                }
+            except Exception:
+                shadow_data = {
+                    "model": {
+                        "name": shadow_predictor.model_name,
+                        "version": shadow_predictor.model_version,
+                    },
+                    "predicted_probability": None,
+                    "latency_ms": (time.perf_counter() - request_start) * 1000.0,
+                    "error": True,
+                }
+
+        # -----------------------------
         # Build production response
         # -----------------------------
 
@@ -132,41 +164,29 @@ def predict(request: PredictRequest) -> PredictResponse:
             predicted_probability=proba,
         )
 
-        # Emit production log event
-        LOG_SINK.emit(build_inference_log_event(
-            request_id=request_id,
-            model_name=prod_predictor.model_name,
-            model_version=prod_predictor.model_version,
-            raw_features=request.features,
-            expected_features=expected_features,
-            predicted_probability=proba,
-            latency_ms=(time.perf_counter() - request_start) * 1000.0,
-            inference_ms=inference_ms,
-            status="success",
-        ).to_dict())
+        # Emit combined log event
+        payload = {
+            "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()),
+            "request_id": request_id,
+            "status": "success",
+            "model": {
+                "name": prod_predictor.model_name,
+                "version": prod_predictor.model_version,
+            },
+            "prediction": {
+                "predicted_probability": proba,
+            },
+            "latency_ms": (time.perf_counter() - request_start) * 1000.0,
+            "inference_ms": inference_ms,
+            "error": False,
+            "features": {
+                "numeric": request.features,
+            },
+        }
+        if shadow_data is not None:
+            payload["shadow"] = shadow_data
 
-        # === Shadow inference (non-blocking) ===
-        if shadow_predictor is not None:
-            try:
-                shadow_inference_start = time.perf_counter()
-                shadow_proba = shadow_predictor.predict_proba(request.features)
-                shadow_inference_end = time.perf_counter()
-                shadow_inference_ms = (shadow_inference_end - shadow_inference_start) * 1000.0
-
-                LOG_SINK.emit(build_inference_log_event(
-                    request_id=request_id,
-                    model_name=shadow_predictor.model_name,
-                    model_version=shadow_predictor.model_version,
-                    raw_features=request.features,
-                    expected_features=expected_features,
-                    predicted_probability=shadow_proba,
-                    latency_ms=(time.perf_counter() - request_start) * 1000.0,
-                    inference_ms=shadow_inference_ms,
-                    status="shadow",
-                ).to_dict())
-            except Exception:
-                # Shadow inference errors should never affect client or main response
-                pass
+        LOG_SINK.emit(payload)
 
         return response
 

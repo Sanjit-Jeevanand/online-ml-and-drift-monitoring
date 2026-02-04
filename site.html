@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online ML with Drift Monitoring & Autonomous Governance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            950: '#020617',
+                            900: '#0f172a',
+                            850: '#0b1221',
+                            800: '#1e293b',
+                            700: '#334155',
+                        },
+                        primary: {
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                        }
+                    },
+                    animation: {
+                        'flow': 'flow 20s linear infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        flow: {
+                            '0%': { transform: 'translateX(-100%)' },
+                            '100%': { transform: 'translateX(100vw)' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(56, 189, 248, 0.2)' },
+                            '100%': { boxShadow: '0 0 20px rgba(56, 189, 248, 0.6), 0 0 40px rgba(56, 189, 248, 0.3)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #e2e8f0;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .node-active {
+            fill: #38bdf8;
+            filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.8));
+            transform: scale(1.2);
+            transition: all 0.4s ease;
+        }
+        .node-inactive {
+            fill: #334155;
+            transition: all 0.4s ease;
+        }
+        .connection-line {
+            stroke: #1e293b;
+            stroke-width: 2;
+            transition: stroke 0.4s ease;
+        }
+        .connection-active {
+            stroke: #38bdf8;
+            stroke-width: 2;
+            filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.5));
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.1);
+        }
+        .section-fade {
+            opacity: 0.3;
+            transition: opacity 0.6s ease;
+        }
+        .section-visible {
+            opacity: 1;
+        }
+        .hero-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .flowing-node {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(56, 189, 248, 0.4);
+            border-radius: 50%;
+            animation: flow 15s linear infinite;
+        }
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="antialiased overflow-x-hidden">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 glass-panel border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="font-mono text-sm font-semibold text-primary-400 tracking-wider">
+                ML_GOVERNANCE_V1.0
+            </div>
+            <div class="hidden md:flex gap-8 text-sm font-medium text-slate-400">
+                <a href="#architecture" class="hover:text-primary-400 transition-colors">Architecture</a>
+                <a href="#lifecycle" class="hover:text-primary-400 transition-colors">Lifecycle</a>
+                <a href="https://github.com/Sanjit-Jeevanand/online-ml-and-drift-monitoring" target="_blank" class="hover:text-primary-400 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
+        <!-- Animated Background -->
+        <div class="hero-bg">
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950"></div>
+            <!-- Flowing nodes -->
+            <div class="flowing-node" style="top: 20%; animation-delay: 0s;"></div>
+            <div class="flowing-node" style="top: 40%; animation-delay: 2s;"></div>
+            <div class="flowing-node" style="top: 60%; animation-delay: 4s;"></div>
+            <div class="flowing-node" style="top: 80%; animation-delay: 6s;"></div>
+            <div class="flowing-node" style="top: 30%; animation-delay: 8s;"></div>
+            <div class="flowing-node" style="top: 70%; animation-delay: 10s;"></div>
+            <!-- Grid pattern -->
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%231e293b\' fill-opacity=\'0.2\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+        </div>
+
+        <div class="relative z-10 max-w-5xl mx-auto px-6 text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700 text-xs font-mono text-primary-400 mb-8">
+                <span class="w-2 h-2 rounded-full bg-primary-400 animate-pulse"></span>
+                PRODUCTION-READY SYSTEM
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">
+                Online ML with <br/>
+                <span class="gradient-text">Drift Monitoring</span> &<br/>
+                Autonomous Governance
+            </h1>
+            
+            <p class="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed">
+                A production-grade machine learning system that detects change, evaluates risk, and governs itself over time.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="#architecture" class="px-8 py-4 bg-primary-600 hover:bg-primary-500 text-white font-medium rounded-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-primary-500/25">
+                    Explore the Architecture
+                </a>
+                <a href="#lifecycle" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg border border-slate-700 transition-all">
+                    View the Full Lifecycle
+                </a>
+            </div>
+
+            <div class="mt-16 flex justify-center gap-8 text-sm text-slate-500 font-mono">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-[1px] bg-slate-700"></div>
+                    <span>Immutable Artifacts</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-[1px] bg-slate-700"></div>
+                    <span>Temporal Realism</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-[1px] bg-slate-700"></div>
+                    <span>Conservative Promotion</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Concept Section -->
+    <section id="concept" class="py-24 relative border-t border-slate-800">
+        <div class="max-w-4xl mx-auto px-6">
+            <h2 class="text-3xl md:text-4xl font-bold mb-8 text-slate-100">
+                Machine Learning Is Not a Model — <br/>
+                <span class="text-slate-500">It's a Lifecycle</span>
+            </h2>
+            
+            <div class="prose prose-lg prose-invert max-w-none text-slate-400 leading-relaxed space-y-6">
+                <p class="text-xl text-slate-300 font-light">
+                    Most machine learning projects stop at training a model. This one begins there.
+                </p>
+                
+                <p>
+                    In real systems, models operate in environments that change continuously. User behavior evolves, data distributions drift, external conditions shift, and labels arrive late. A model that was correct yesterday can become silently wrong tomorrow — and still appear to be functioning.
+                </p>
+                
+                <p>
+                    This project treats machine learning as a <span class="text-primary-400 font-medium">control system</span>, not a training exercise.
+                </p>
+                
+                <p>
+                    Rather than optimizing for peak offline accuracy, the system is designed around a different question:
+                </p>
+                
+                <blockquote class="border-l-4 border-primary-500 pl-6 my-8 italic text-slate-300 text-xl">
+                    How do we maintain trustworthy predictions over time in the presence of uncertainty and change?
+                </blockquote>
+                
+                <p>To answer that, the system enforces:</p>
+                
+                <div class="grid md:grid-cols-2 gap-4 my-8 not-prose">
+                    <div class="p-4 rounded-lg bg-slate-900 border border-slate-800">
+                        <div class="font-mono text-primary-400 text-sm mb-1">01</div>
+                        <div class="font-medium text-slate-200">Strict Temporal Realism</div>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-900 border border-slate-800">
+                        <div class="font-mono text-primary-400 text-sm mb-1">02</div>
+                        <div class="font-medium text-slate-200">Immutable Artifacts</div>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-900 border border-slate-800">
+                        <div class="font-mono text-primary-400 text-sm mb-1">03</div>
+                        <div class="font-medium text-slate-200">Explicit Feature Contracts</div>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-900 border border-slate-800">
+                        <div class="font-mono text-primary-400 text-sm mb-1">04</div>
+                        <div class="font-medium text-slate-200">Conservative Promotion Logic</div>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 md:col-span-2">
+                        <div class="font-mono text-primary-400 text-sm mb-1">05</div>
+                        <div class="font-medium text-slate-200">Auditable Governance Decisions</div>
+                    </div>
+                </div>
+                
+                <p class="text-slate-300 font-medium">
+                    Every component exists to support safe evolution, not rapid change.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Architecture Section -->
+    <section id="architecture" class="relative min-h-screen">
+        <div class="flex flex-col lg:flex-row">
+            
+            <!-- Left Content Area -->
+            <div class="lg:w-2/3 w-full">
+                <div class="px-6 py-24 max-w-3xl mx-auto lg:mx-0 lg:ml-auto lg:pr-16 space-y-32">
+                    
+                    <!-- Section 1 -->
+                    <div id="section-1" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">1</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Data Ingestion & Validation</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">What happens here</p>
+                            <p>The system begins by ingesting raw data from a fixed source of truth. Before any modeling occurs, the data is treated as <span class="text-slate-200">untrusted input</span>.</p>
+                            <p>A strict schema is applied:</p>
+                            <ul class="list-disc list-inside space-y-2 ml-4 font-mono text-sm text-slate-500">
+                                <li>Required columns must exist</li>
+                                <li>Value ranges are enforced</li>
+                                <li>Categorical codes are validated</li>
+                                <li>Missing values are rejected</li>
+                            </ul>
+                            <div class="p-4 bg-red-950/30 border border-red-900/50 rounded-lg my-6">
+                                <p class="text-red-400 font-mono text-sm font-bold mb-1">STRICT POLICY</p>
+                                <p class="text-red-200/80 text-sm">No cleaning. No imputation. No silent fixes. If the data violates expectations, the pipeline stops.</p>
+                            </div>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p>Most ML failures originate upstream. By enforcing validation early, downstream systems can rely on data correctness guarantees instead of defensive programming.</p>
+                            <p class="text-slate-500 italic">This phase optimizes for confidence, not convenience.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 2 -->
+                    <div id="section-2" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">2</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Feature Contract</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">What happens here</p>
+                            <p>Features are defined declaratively in a feature contract:</p>
+                            <ul class="list-disc list-inside space-y-2 ml-4 text-slate-400">
+                                <li>Which columns are allowed</li>
+                                <li>Which are forbidden</li>
+                                <li>How each feature should be interpreted</li>
+                            </ul>
+                            <p class="mt-4">Features are classified semantically:</p>
+                            <div class="grid grid-cols-2 gap-3 my-6">
+                                <div class="px-4 py-3 bg-slate-800 rounded border border-slate-700 font-mono text-sm text-primary-400">Continuous</div>
+                                <div class="px-4 py-3 bg-slate-800 rounded border border-slate-700 font-mono text-sm text-purple-400">Nominal</div>
+                                <div class="px-4 py-3 bg-slate-800 rounded border border-slate-700 font-mono text-sm text-emerald-400">Ordinal</div>
+                                <div class="px-4 py-3 bg-slate-800 rounded border border-slate-700 font-mono text-sm text-red-400">Forbidden</div>
+                            </div>
+                            <p>This contract is shared across training, inference, monitoring, and retraining.</p>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p>This is how the system prevents <span class="text-primary-400">training–serving skew</span> by construction.</p>
+                            <p class="text-slate-200 font-medium border-l-4 border-primary-500 pl-4 my-4">If a feature is not in the contract, it does not exist.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 3 -->
+                    <div id="section-3" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">3</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Model Training</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Baseline & Candidates</p>
+                            <p>Training is split into two explicit paths:</p>
+                            <div class="space-y-3 my-6">
+                                <div class="flex items-center gap-3 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                                    <div class="w-2 h-2 rounded-full bg-slate-500"></div>
+                                    <div>
+                                        <div class="font-medium text-slate-200">Baseline Models</div>
+                                        <div class="text-sm text-slate-500">Reference behavior for comparison</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                                    <div class="w-2 h-2 rounded-full bg-primary-400"></div>
+                                    <div>
+                                        <div class="font-medium text-slate-200">Candidate Models</div>
+                                        <div class="text-sm text-slate-500">Potential improvements under evaluation</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p>Models are trained only on frozen feature artifacts. No script touches raw data directly.</p>
+                            <p>Multiple model families are evaluated: Logistic regression, Gradient-boosted trees.</p>
+                            <p class="text-emerald-400 font-mono text-sm mt-4">Calibration is treated as mandatory, not optional.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 4 -->
+                    <div id="section-4" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">4</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Versioned Model Registry</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Immutable Artifacts</p>
+                            <p>Every trained model is registered as an immutable artifact bundle:</p>
+                            <ul class="font-mono text-sm space-y-2 text-slate-500 bg-slate-900 p-4 rounded-lg border border-slate-800">
+                                <li>├── model.binary</li>
+                                <li>├── preprocessor.pkl</li>
+                                <li>├── metrics.json</li>
+                                <li>├── calibration_data.csv</li>
+                                <li>└── metadata.yaml</li>
+                            </ul>
+                            <p class="mt-4">Versions follow semantic versioning:</p>
+                            <div class="flex gap-4 text-sm font-mono">
+                                <span class="text-red-400">Major → breaking</span>
+                                <span class="text-yellow-400">Minor → improved</span>
+                                <span class="text-emerald-400">Patch → metadata</span>
+                            </div>
+                            <div class="p-4 bg-red-950/30 border border-red-900/50 rounded-lg my-6">
+                                <p class="text-red-400 font-mono text-sm font-bold">IMMUTABILITY GUARANTEE</p>
+                                <p class="text-red-200/80 text-sm mt-1">No overwrites are allowed. Ever.</p>
+                            </div>
+                            <p class="font-medium text-slate-300">Why this matters</p>
+                            <p>Rollback is trivial only if history is preserved. This registry turns models into deployable assets, not files.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 5 -->
+                    <div id="section-5" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">5</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Online Inference API</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Production Interface</p>
+                            <p>The production model is exposed via a stateless HTTP API:</p>
+                            <div class="bg-slate-950 p-4 rounded-lg border border-slate-800 font-mono text-xs text-slate-400 overflow-x-auto">
+                                <div class="text-slate-600"># Request</div>
+                                <div class="text-purple-400">POST</div> <div class="text-emerald-400">/api/v1/predict</div><br/>
+                                {<br/>
+                                &nbsp;&nbsp;<span class="text-slate-500">"features"</span>: { ... },<br/>
+                                &nbsp;&nbsp;<span class="text-slate-500">"request_id"</span>: <span class="text-yellow-600">"uuid-v4"</span><br/>
+                                }
+                            </div>
+                            <ul class="list-disc list-inside space-y-2 ml-4 mt-4">
+                                <li>Strict request schema</li>
+                                <li>Deterministic preprocessing</li>
+                                <li>Low-latency CPU inference</li>
+                            </ul>
+                            <p>The model is loaded once at startup. Each request produces a probability, not a decision.</p>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p>Separating prediction from decision-making preserves interpretability and reduces blast radius.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 6 -->
+                    <div id="section-6" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">6</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Structured Logging</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Observable Events</p>
+                            <p>Every inference emits a structured log event:</p>
+                            <div class="grid grid-cols-2 gap-3 my-4 text-sm font-mono">
+                                <div class="text-slate-500">latency_ms</div>
+                                <div class="text-slate-300">float</div>
+                                <div class="text-slate-500">model_version</div>
+                                <div class="text-slate-300">semantic_version</div>
+                                <div class="text-slate-500">prediction_dist</div>
+                                <div class="text-slate-300">histogram</div>
+                                <div class="text-slate-500">validation_status</div>
+                                <div class="text-emerald-400">valid | invalid</div>
+                            </div>
+                            <div class="p-3 bg-yellow-950/30 border border-yellow-900/50 rounded text-yellow-200/80 text-sm font-mono">
+                                Raw inputs are never stored.
+                            </div>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p>Logs become data, not text. They power monitoring, debugging, and governance.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 7 -->
+                    <div id="section-7" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">7</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Snapshot Aggregation</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Temporal Windows</p>
+                            <p>Logs are aggregated into time-windowed snapshots:</p>
+                            <ul class="list-disc list-inside space-y-2 ml-4">
+                                <li>Request volume</li>
+                                <li>Prediction statistics</li>
+                                <li>Feature distributions</li>
+                            </ul>
+                            <p class="mt-4">Each snapshot is immutable and comparable.</p>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p class="text-slate-200">Monitoring individual requests is noise. Snapshots capture behavior.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 8 -->
+                    <div id="section-8" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">8</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Drift Detection</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Statistical Measures</p>
+                            <p>Current snapshots are compared to baselines using:</p>
+                            <div class="space-y-3 my-6">
+                                <div class="flex justify-between items-center p-3 bg-slate-800 rounded border border-slate-700">
+                                    <span class="font-mono text-sm text-slate-300">KS Test</span>
+                                    <span class="text-xs text-slate-500">Numeric drift</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-slate-800 rounded border border-slate-700">
+                                    <span class="font-mono text-sm text-slate-300">PSI</span>
+                                    <span class="text-xs text-slate-500">Categorical drift</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-slate-800 rounded border border-slate-700">
+                                    <span class="font-mono text-sm text-slate-300">Prediction Shift</span>
+                                    <span class="text-xs text-slate-500">Distribution delta</span>
+                                </div>
+                            </div>
+                            <p>Volume sanity checks prevent false alarms.</p>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p class="text-primary-400 font-medium">Drift is measured, not guessed.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 9 -->
+                    <div id="section-9" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">9</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Retraining Decision Engine</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Policy-Based Automation</p>
+                            <p>Drift metrics flow into explicit policies:</p>
+                            <div class="space-y-2 my-6 font-mono text-sm">
+                                <div class="flex items-center gap-3 p-3 bg-emerald-950/30 border border-emerald-900/50 rounded text-emerald-400">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                                    NO_ACTION
+                                </div>
+                                <div class="flex items-center gap-3 p-3 bg-yellow-950/30 border border-yellow-900/50 rounded text-yellow-400">
+                                    <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
+                                    MONITOR
+                                </div>
+                                <div class="flex items-center gap-3 p-3 bg-orange-950/30 border border-orange-900/50 rounded text-orange-400">
+                                    <div class="w-2 h-2 rounded-full bg-orange-400"></div>
+                                    RETRAIN_RECOMMENDED
+                                </div>
+                                <div class="flex items-center gap-3 p-3 bg-red-950/30 border border-red-900/50 rounded text-red-400">
+                                    <div class="w-2 h-2 rounded-full bg-red-400"></div>
+                                    RETRAIN_REQUIRED
+                                </div>
+                            </div>
+                            <p>Decisions are rule-based and auditable.</p>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p>Automation without policy is chaos. Policy without metrics is opinion.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 10 -->
+                    <div id="section-10" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">10</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Candidate Evaluation</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Head-to-Head Comparison</p>
+                            <p>When retraining is allowed, a candidate model is trained and compared head-to-head with production using identical data.</p>
+                            <p class="mt-4">Promotion requires:</p>
+                            <ul class="list-disc list-inside space-y-2 ml-4 text-slate-300">
+                                <li>No metric regressions</li>
+                                <li>Stable calibration</li>
+                                <li>No distribution instability</li>
+                            </ul>
+                            <div class="p-4 bg-slate-800 rounded-lg border border-slate-700 mt-6">
+                                <p class="text-slate-200 font-medium text-center">The default outcome is no change.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 11 -->
+                    <div id="section-11" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">11</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Shadow Deployment</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Risk-Free Validation</p>
+                            <p>Candidate models run in parallel with production:</p>
+                            <div class="flex items-center justify-center gap-4 my-6 font-mono text-sm">
+                                <div class="text-center">
+                                    <div class="w-16 h-16 rounded-full bg-slate-700 flex items-center justify-center text-slate-300 mb-2">Prod</div>
+                                    <div class="text-slate-500">v1.2.0</div>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <div class="w-16 h-[2px] bg-slate-600"></div>
+                                    <div class="text-xs text-slate-600">shadow traffic</div>
+                                    <div class="w-16 h-[2px] bg-slate-600"></div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="w-16 h-16 rounded-full bg-primary-900/50 border-2 border-primary-400 flex items-center justify-center text-primary-400 mb-2">Cand</div>
+                                    <div class="text-primary-400">v1.3.0</div>
+                                </div>
+                            </div>
+                            <ul class="list-disc list-inside space-y-2 ml-4">
+                                <li>Same inputs</li>
+                                <li>No user impact</li>
+                                <li>Paired logging</li>
+                            </ul>
+                            <p>Differences are measured under real traffic.</p>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p>Offline metrics lie. Production traffic does not.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 12 -->
+                    <div id="section-12" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">12</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Governance State Machine</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Explicit States</p>
+                            <p>The system tracks explicit states:</p>
+                            <div class="flex flex-wrap gap-2 my-6 font-mono text-xs">
+                                <span class="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400">TRAINING</span>
+                                <span class="text-slate-600">→</span>
+                                <span class="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400">SHADOWING</span>
+                                <span class="text-slate-600">→</span>
+                                <span class="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-emerald-400">PROMOTABLE</span>
+                                <span class="text-slate-600">→</span>
+                                <span class="px-3 py-1 rounded-full bg-primary-900/50 border border-primary-400 text-primary-400">PROMOTED</span>
+                            </div>
+                            <p>Transitions are logged and constrained.</p>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p>Eligibility is not execution.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 13 -->
+                    <div id="section-13" class="section-content section-fade scroll-mt-24">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 font-mono text-primary-400 font-bold">13</span>
+                            <div class="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4 text-slate-100">Autonomous Promotion & Rollback</h3>
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p class="font-medium text-slate-300 text-lg">Governance Runner</p>
+                            <p>A scheduled governance runner:</p>
+                            <ul class="list-decimal list-inside space-y-2 ml-4">
+                                <li>Evaluates state</li>
+                                <li>Applies allowed transitions</li>
+                                <li>Executes promotion or rollback</li>
+                                <li>Exits cleanly</li>
+                            </ul>
+                            <p class="mt-4">Manual overrides are respected.</p>
+                            <p class="font-medium text-slate-300 mt-6">Why this matters</p>
+                            <p class="text-slate-200 font-medium">The system is autonomous, not reckless.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Right Side: Architecture Chart -->
+            <div id="lifecycle" class="lg:w-1/3 w-full lg:h-screen lg:sticky lg:top-0 flex items-center justify-center p-6 bg-slate-950 border-l border-slate-800">
+                <div class="relative w-full max-w-sm">
+                    <h4 class="text-xs font-mono text-slate-500 mb-8 text-center tracking-widest uppercase">System Architecture</h4>
+                    
+                    <svg viewBox="0 0 300 780" class="w-full h-auto drop-shadow-2xl">
+                        <defs>
+                            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:0" />
+                                <stop offset="50%" style="stop-color:#38bdf8;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#38bdf8;stop-opacity:0" />
+                            </linearGradient>
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        
+                        <!-- Connection Lines -->
+                        <line x1="150" y1="30" x2="150" y2="70" class="connection-line" id="line-1" />
+                        <line x1="150" y1="90" x2="150" y2="130" class="connection-line" id="line-2" />
+                        <line x1="150" y1="150" x2="150" y2="190" class="connection-line" id="line-3" />
+                        <line x1="150" y1="210" x2="150" y2="250" class="connection-line" id="line-4" />
+                        <line x1="150" y1="270" x2="150" y2="310" class="connection-line" id="line-5" />
+                        <line x1="150" y1="330" x2="150" y2="370" class="connection-line" id="line-6" />
+                        <line x1="150" y1="390" x2="150" y2="430" class="connection-line" id="line-7" />
+                        <line x1="150" y1="450" x2="150" y2="490" class="connection-line" id="line-8" />
+                        <line x1="150" y1="510" x2="150" y2="550" class="connection-line" id="line-9" />
+                        <line x1="150" y1="570" x2="150" y2="610" class="connection-line" id="line-10" />
+                        <line x1="150" y1="630" x2="150" y2="670" class="connection-line" id="line-11" />
+                        <line x1="150" y1="690" x2="150" y2="730" class="connection-line" id="line-12" />
+                        
+                        <!-- Nodes -->
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(1)" onmouseenter="highlightNode(1)" onmouseleave="resetNode(1)">
+                            <circle cx="150" cy="30" r="12" class="node-inactive" id="node-1" />
+                            <text x="180" y="35" class="text-xs fill-slate-400 font-mono text-[10px]">Data Ingestion</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(2)" onmouseenter="highlightNode(2)" onmouseleave="resetNode(2)">
+                            <circle cx="150" cy="80" r="12" class="node-inactive" id="node-2" />
+                            <text x="180" y="85" class="text-xs fill-slate-400 font-mono text-[10px]">Feature Contract</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(3)" onmouseenter="highlightNode(3)" onmouseleave="resetNode(3)">
+                            <circle cx="150" cy="140" r="12" class="node-inactive" id="node-3" />
+                            <text x="180" y="145" class="text-xs fill-slate-400 font-mono text-[10px]">Training</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(4)" onmouseenter="highlightNode(4)" onmouseleave="resetNode(4)">
+                            <circle cx="150" cy="200" r="12" class="node-inactive" id="node-4" />
+                            <text x="180" y="205" class="text-xs fill-slate-400 font-mono text-[10px]">Model Registry</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(5)" onmouseenter="highlightNode(5)" onmouseleave="resetNode(5)">
+                            <circle cx="150" cy="260" r="12" class="node-inactive" id="node-5" />
+                            <text x="180" y="265" class="text-xs fill-slate-400 font-mono text-[10px]">Inference API</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(6)" onmouseenter="highlightNode(6)" onmouseleave="resetNode(6)">
+                            <circle cx="150" cy="320" r="12" class="node-inactive" id="node-6" />
+                            <text x="180" y="325" class="text-xs fill-slate-400 font-mono text-[10px]">Logging</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(7)" onmouseenter="highlightNode(7)" onmouseleave="resetNode(7)">
+                            <circle cx="150" cy="380" r="12" class="node-inactive" id="node-7" />
+                            <text x="180" y="385" class="text-xs fill-slate-400 font-mono text-[10px]">Snapshot Agg</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(8)" onmouseenter="highlightNode(8)" onmouseleave="resetNode(8)">
+                            <circle cx="150" cy="440" r="12" class="node-inactive" id="node-8" />
+                            <text x="180" y="445" class="text-xs fill-slate-400 font-mono text-[10px]">Drift Detection</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(9)" onmouseenter="highlightNode(9)" onmouseleave="resetNode(9)">
+                            <circle cx="150" cy="500" r="12" class="node-inactive" id="node-9" />
+                            <text x="180" y="505" class="text-xs fill-slate-400 font-mono text-[10px]">Retraining Decision</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(10)" onmouseenter="highlightNode(10)" onmouseleave="resetNode(10)">
+                            <circle cx="150" cy="560" r="12" class="node-inactive" id="node-10" />
+                            <text x="180" y="565" class="text-xs fill-slate-400 font-mono text-[10px]">Evaluation</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(11)" onmouseenter="highlightNode(11)" onmouseleave="resetNode(11)">
+                            <circle cx="150" cy="620" r="12" class="node-inactive" id="node-11" />
+                            <text x="180" y="625" class="text-xs fill-slate-400 font-mono text-[10px]">Shadow Deploy</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(12)" onmouseenter="highlightNode(12)" onmouseleave="resetNode(12)">
+                            <circle cx="150" cy="680" r="12" class="node-inactive" id="node-12" />
+                            <text x="180" y="685" class="text-xs fill-slate-400 font-mono text-[10px]">Governance</text>
+                        </g>
+                        
+                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(13)" onmouseenter="highlightNode(13)" onmouseleave="resetNode(13)">
+                            <circle cx="150" cy="740" r="14" class="node-inactive" id="node-13" fill="url(#lineGradient)" />
+                            <text x="180" y="745" class="text-xs fill-primary-400 font-mono text-[10px] font-bold">Promotion</text>
+                        </g>
+                    </svg>
+                    
+                    <div class="mt-8 text-center">
+                        <p class="text-xs text-slate-600 font-mono mb-2">Scroll to explore</p>
+                        <div class="w-6 h-10 border-2 border-slate-700 rounded-full mx-auto flex justify-center">
+                            <div class="w-1 h-2 bg-slate-500 rounded-full mt-2 animate-bounce"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Closing Section -->
+    <section class="py-24 border-t border-slate-800 bg-slate-950 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary-900/20 via-slate-950 to-slate-950"></div>
+        <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
+            <h2 class="text-4xl md:text-5xl font-bold mb-8 text-slate-100">
+                Machine Learning That Knows<br/>
+                <span class="gradient-text">When Not to Change</span>
+            </h2>
+            
+            <p class="text-lg text-slate-400 mb-12 leading-relaxed max-w-2xl mx-auto">
+                This project demonstrates how to build ML systems that are conservative, explainable, auditable, and resilient to change.
+            </p>
+            
+            <div class="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-12 text-left">
+                <div class="flex items-center gap-3 p-4 rounded-lg bg-slate-900 border border-slate-800">
+                    <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                    <span class="text-slate-300">Conservative by design</span>
+                </div>
+                <div class="flex items-center gap-3 p-4 rounded-lg bg-slate-900 border border-slate-800">
+                    <div class="w-2 h-2 rounded-full bg-blue-400"></div>
+                    <span class="text-slate-300">Explainable decisions</span>
+                </div>
+                <div class="flex items-center gap-3 p-4 rounded-lg bg-slate-900 border border-slate-800">
+                    <div class="w-2 h-2 rounded-full bg-purple-400"></div>
+                    <span class="text-slate-300">Fully auditable</span>
+                </div>
+                <div class="flex items-center gap-3 p-4 rounded-lg bg-slate-900 border border-slate-800">
+                    <div class="w-2 h-2 rounded-full bg-orange-400"></div>
+                    <span class="text-slate-300">Resilient to drift</span>
+                </div>
+            </div>
+            
+            <p class="text-slate-500 font-mono text-sm">
+                Not by slowing down — but by thinking in systems.
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 border-t border-slate-800 bg-slate-950">
+        <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="text-slate-600 font-mono text-sm">
+                ML_GOVERNANCE_V1.0
+            </div>
+            <a href="https://github.com/Sanjit-Jeevanand/online-ml-and-drift-monitoring" target="_blank" class="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition-all hover:scale-105">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                <span class="font-medium">View on GitHub</span>
+            </a>
+        </div>
+    </footer>
+
+    <script>
+        // Intersection Observer for scroll-based highlighting
+        const observerOptions = {
+            root: null,
+            rootMargin: '-20% 0px -60% 0px',
+            threshold: 0
+        };
+
+        let currentActive = 1;
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id.split('-')[1];
+                    if (id) {
+                        setActiveNode(parseInt(id));
+                    }
+                }
+            });
+        }, observerOptions);
+
+        // Observe all sections
+        document.querySelectorAll('.section-content').forEach(section => {
+            observer.observe(section);
+        });
+
+        function setActiveNode(index) {
+            // Reset all nodes
+            for (let i = 1; i <= 13; i++) {
+                const node = document.getElementById(`node-${i}`);
+                const line = document.getElementById(`line-${i}`);
+                
+                if (i <= index) {
+                    node.classList.remove('node-inactive');
+                    node.classList.add('node-active');
+                    if (line) {
+                        line.classList.remove('connection-line');
+                        line.classList.add('connection-active');
+                    }
+                } else {
+                    node.classList.remove('node-active');
+                    node.classList.add('node-inactive');
+                    if (line) {
+                        line.classList.remove('connection-active');
+                        line.classList.add('connection-line');
+                    }
+                }
+            }
+            currentActive = index;
+        }
+
+        function scrollToSection(num) {
+            const element = document.getElementById(`section-${num}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function highlightNode(num) {
+            const node = document.getElementById(`node-${num}`);
+            node.style.transform = 'scale(1.3)';
+            node.style.filter = 'drop-shadow(0 0 15px rgba(56, 189, 248, 0.9))';
+        }
+
+        function resetNode(num) {
+            if (num !== currentActive) {
+                const node = document.getElementById(`node-${num}`);
+                node.style.transform = 'scale(1)';
+                node.style.filter = '';
+            }
+        }
+
+        // Fade in sections on scroll
+        const fadeObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.remove('section-fade');
+                    entry.target.classList.add('section-visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.section-content').forEach(section => {
+            fadeObserver.observe(section);
+        });
+
+        // Initialize first node as active
+        setActiveNode(1);
+    </script>
+</body>
+</html>

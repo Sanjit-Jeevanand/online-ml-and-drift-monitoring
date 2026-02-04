@@ -17,28 +17,48 @@ def ks_drift(
 
     drift_scores = {}
 
+    # -------------------------------
+    # Resolve baseline numeric stats
+    # -------------------------------
     baseline_numeric = baseline.get("feature_distributions")
 
     if baseline_numeric is None:
-        raise KeyError("Baseline snapshot missing 'feature_distributions'")
+        baseline_numeric = (
+            baseline.get("features", {})
+            .get("numeric")
+        )
 
+    if baseline_numeric is None:
+        raise KeyError(
+            "Baseline snapshot missing numeric feature distributions"
+        )
+
+    # -------------------------------
+    # Resolve current numeric stats
+    # -------------------------------
     current_numeric = current.get("feature_distributions")
 
     if current_numeric is None:
-        # Backward compatibility: older current snapshots
-        current_numeric = current.get("features")
+        current_numeric = (
+            current.get("features", {})
+            .get("numeric")
+        )
 
     if current_numeric is None:
-        raise KeyError("Current snapshot missing feature distributions")
+        raise KeyError(
+            "Current snapshot missing numeric feature distributions"
+        )
 
+    # -------------------------------
+    # Compute KS per feature
+    # -------------------------------
     for feature, base_stats in baseline_numeric.items():
-        if feature not in current_numeric:
+        curr_stats = current_numeric.get(feature)
+        if curr_stats is None:
             continue
 
-        # Reconstruct distributions approximately using quantiles
-        # NOTE: snapshot-based approximation, not raw samples
         base_dist = _approximate_distribution(base_stats)
-        curr_dist = _approximate_distribution(current_numeric[feature])
+        curr_dist = _approximate_distribution(curr_stats)
 
         ks_stat, _ = ks_2samp(base_dist, curr_dist)
         drift_scores[feature] = float(ks_stat)

@@ -79,7 +79,6 @@ def decide_drift_action(
 
     high_drift_features = []
     moderate_drift_features = []
-
     for feature, ks in ks_metrics.items():
         level = classify_ks(ks)
         if level == "high":

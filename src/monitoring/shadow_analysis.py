@@ -49,36 +49,6 @@ def load_events(
 
 
 # ============================================================
-# Pair prod + shadow requests
-# ============================================================
-
-def pair_requests(events: List[Dict]) -> List[Dict]:
-
-    by_request: Dict[str, List[Dict]] = {}
-
-    for e in events:
-        rid = e["request_id"]
-        by_request.setdefault(rid, []).append(e)
-
-    paired: List[Dict] = []
-
-    for rid, records in by_request.items():
-        prod = next((r for r in records if r["status"] == "success"), None)
-        shadow = next((r for r in records if r["status"] == "shadow"), None)
-
-        if prod and shadow:
-            paired.append(
-                {
-                    "request_id": rid,
-                    "prod": prod,
-                    "shadow": shadow,
-                }
-            )
-
-    return paired
-
-
-# ============================================================
 # Metric computation
 # ============================================================
 
@@ -117,8 +87,8 @@ def compute_latency_deltas(pairs: List[Dict]) -> Dict:
 
 def compute_error_rates(pairs: List[Dict]) -> Dict:
 
-    prod_errors = sum(pair["prod"]["error"] is not None for pair in pairs)
-    shadow_errors = sum(pair["shadow"]["error"] is not None for pair in pairs)
+    prod_errors = sum(pair["prod"]["error"] == True for pair in pairs)
+    shadow_errors = sum(pair["shadow"]["error"] == True for pair in pairs)
 
     n = len(pairs)
 
@@ -179,7 +149,23 @@ def run_shadow_analysis(
 ) -> Dict:
 
     events = load_events(start_time=start_time, end_time=end_time)
-    pairs = pair_requests(events)
+
+    pairs = [
+        {
+            "prod": {
+                "prediction": e["prediction"],
+                "latency_ms": e["latency_ms"],
+                "error": e.get("error", False),
+            },
+            "shadow": {
+                "prediction": e["shadow"],
+                "latency_ms": e["shadow"]["latency_ms"],
+                "error": e.get("shadow_error", False) or e["shadow"].get("error", False),
+            },
+        }
+        for e in events
+        if "prediction" in e and "shadow" in e
+    ]
 
     if not pairs:
         raise RuntimeError("No paired shadow/production requests found.")
@@ -187,6 +173,22 @@ def run_shadow_analysis(
     prediction_metrics = compute_prediction_deltas(pairs)
     latency_metrics = compute_latency_deltas(pairs)
     error_rates = compute_error_rates(pairs)
+
+    prod_predictions = [
+        pair["prod"]["prediction"]["predicted_probability"]
+        for pair in pairs
+    ]
+
+    prod_latencies = [
+        pair["prod"]["latency_ms"]
+        for pair in pairs
+    ]
+
+    production_baseline = {
+        "mean_prediction": statistics.mean(prod_predictions),
+        "p95_latency_ms": statistics.quantiles(prod_latencies, n=20)[18],
+        "error_rate": error_rates["production"],
+    }
 
     decision = make_decision(
         prediction_metrics=prediction_metrics,
@@ -202,6 +204,7 @@ def run_shadow_analysis(
         "counts": {
             "paired_requests": len(pairs)
         },
+        "production_baseline": production_baseline,
         "prediction_comparison": prediction_metrics,
         "latency_comparison": latency_metrics,
         "error_rates": error_rates,

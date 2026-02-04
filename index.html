@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Governance Demo — ML Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        // === API Helpers ===
+        const API_BASE = "https://iqv2uh7lkycoyp5jw67nqh6jxm0nexuh.lambda-url.eu-west-1.on.aws";
+
+        async function fetchJSON(path) {
+            const res = await fetch(API_BASE + path);
+            if (!res.ok) throw new Error(path + " failed");
+
+            const data = await res.json();
+
+            // Lambda URL / API Gateway compatibility
+            if (data && typeof data.body === "string") {
+                return JSON.parse(data.body);
+            }
+
+            return data;
+        }
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            950: '#020617',
+                            900: '#0f172a',
+                            850: '#0b1221',
+                            800: '#1e293b',
+                            750: '#162032',
+                            700: '#334155',
+                            650: '#475569',
+                        },
+                        amber: {
+                            450: '#f59e0b',
+                        },
+                        emerald: {
+                            450: '#10b981',
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(8px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #e2e8f0;
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+        }
+        
+        .panel {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(51, 65, 85, 0.4);
+            backdrop-filter: blur(12px);
+        }
+        
+        .panel-elevated {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            box-shadow: 0 0 40px -10px rgba(99, 102, 241, 0.1);
+        }
+        
+        .node {
+            width: 96px;
+            height: 96px;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .node:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .node.active {
+            border-color: rgba(99, 102, 241, 0.6);
+            background: rgba(99, 102, 241, 0.1);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+        }
+        /* Indigo active state for node icon, icon color, label */
+        .node.active div:first-child {
+            background: rgba(79,70,229,0.3);
+        }
+        .node.active svg {
+            color: #818cf8;
+        }
+        .node.active span {
+            color: #818cf8;
+        }
+        
+        .toggle-track {
+            transition: background-color 0.3s ease;
+        }
+        
+        .toggle-thumb {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .metric-card {
+            transition: all 0.2s ease;
+        }
+        
+        .metric-card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+        
+        .log-row {
+            transition: background-color 0.15s ease;
+        }
+        
+        .log-row:hover {
+            background-color: rgba(30, 41, 59, 0.5);
+        }
+        
+        .artifact-item {
+            transition: all 0.15s ease;
+        }
+        
+        .artifact-item:hover {
+            background-color: rgba(30, 41, 59, 0.5);
+            padding-left: 1rem;
+        }
+        
+        .decision-entry {
+            transition: all 0.2s ease;
+        }
+        
+        .decision-entry:hover {
+            background-color: rgba(30, 41, 59, 0.5);
+            border-left-color: rgba(99, 102, 241, 0.5);
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        
+        .code-reference {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: #64748b;
+        }
+        
+        .code-reference:hover {
+            color: #818cf8;
+        }
+        
+        .status-indicator {
+            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .simulation-boundary {
+            position: relative;
+        }
+        
+        .simulation-boundary::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            padding: 2px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(245, 158, 11, 0.1));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        .log-tab {
+            padding: 4px 10px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            border-radius: 6px;
+            background: #1e293b;
+            color: #94a3b8;
+        }
+
+            .log-tab.active {
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+            .log-panel pre {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 border-b border-slate-800/50 bg-slate-950/90 backdrop-blur-xl">
+        <div class="max-w-[1600px] mx-auto px-6 h-14 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-7 h-7 rounded bg-indigo-600 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                </div>
+                <div>
+                    <div class="font-mono text-xs font-semibold text-slate-200 tracking-wider">ML PLATFORM</div>
+                    <div class="text-[10px] text-slate-500 font-mono">System Governance Demo</div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 status-indicator"></span>
+                    <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">System Healthy</span>
+                </div>
+                <a href="#" class="text-[11px] text-slate-500 hover:text-indigo-400 transition-colors font-mono">View Docs</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Demo Area -->
+    <main class="flex-1 pt-14">
+        
+        <!-- Simulation Controls (Top Priority) -->
+        <section class="border-b border-slate-800/50 bg-slate-950/30">
+            <div class="max-w-[1600px] mx-auto px-6 py-6">
+                <div class="flex items-start justify-between mb-6">
+                    <div>
+                        <h1 class="text-lg font-semibold text-slate-100 mb-1">System Governance Controls</h1>
+                        <p class="text-xs text-slate-500">Observe and simulate platform behavior without production impact</p>
+                    </div>
+                    
+                    <!-- Simulation Toggle -->
+                    <div class="flex flex-col items-end gap-2">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Simulation Mode</span>
+                            <button id="simToggle" class="relative w-14 h-7 rounded-full bg-slate-800 toggle-track focus:outline-none" onclick="toggleSimulation()">
+                                <div id="simThumb" class="absolute left-1 top-1 w-5 h-5 rounded-full bg-slate-600 toggle-thumb shadow-md"></div>
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-slate-600 max-w-xs text-right">
+                            Simulation mode generates signals and decisions only. Learning and promotion remain human-gated.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Simulation Controls (Hidden by default) -->
+                <div id="simControls" class="hidden simulation-boundary rounded-xl p-5 bg-slate-900/50 border border-amber-500/20 animate-fade-in">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <span class="text-[11px] font-mono text-amber-400 uppercase tracking-wider">Active Simulation</span>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-4 gap-4">
+                        <!-- Traffic Volume -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-[10px] font-mono text-slate-400 uppercase">Traffic Volume</label>
+                                <span id="trafficValue" class="text-[10px] font-mono text-indigo-400">2,400 req</span>
+                            </div>
+                            <input type="range" id="trafficSlider" min="0" max="10000" value="2400" step="100"
+                                class="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-amber-500"
+                                oninput="updateTraffic(this.value)">
+                            <p class="text-[9px] text-slate-600">simulate_traffic(n_requests)</p>
+                        </div>
+
+                        <!-- Distribution Shift -->
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-mono text-slate-400 uppercase">Distribution Shift</label>
+                            <select id="driftSelect" onchange="updateDrift(this.value)"
+                                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500/50">
+                                <option value="none">None</option>
+                                <option value="mild" selected>Mild</option>
+                                <option value="severe">Severe</option>
+                            </select>
+                            <p class="text-[9px] text-slate-600">simulate_feature_drift(severity)</p>
+                        </div>
+
+                        <!-- Shadow Coverage -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-[10px] font-mono text-slate-400 uppercase">Shadow Coverage</label>
+                                <span id="shadowValue" class="text-[10px] font-mono text-indigo-400">15%</span>
+                            </div>
+                            <input type="range" id="shadowSlider" min="0" max="100" value="15" step="5"
+                                class="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-amber-500"
+                                oninput="updateShadow(this.value)">
+                            <p class="text-[9px] text-slate-600">simulate_shadow_execution(coverage)</p>
+                        </div>
+
+                        <!-- Time Advancement -->
+                        <div class="space-y-2 flex flex-col justify-end">
+                            <button onclick="advanceWindow()" 
+                                class="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 transition-colors flex items-center justify-center gap-2">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Advance monitoring window
+                            </button>
+                            <p class="text-[9px] text-slate-600">advance_snapshot_window()</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Governance Rules (Always Visible) -->
+                <div class="mt-6 p-4 rounded-xl bg-slate-900/30 border border-slate-800/50">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Governance Rules</h3>
+                        <a href="#" class="code-reference hover:text-indigo-400 transition-colors">src/governance/controller.py</a>
+                    </div>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="flex items-start gap-2 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                            <div class="w-4 h-4 rounded bg-slate-800 flex items-center justify-center mt-0.5">
+                                <svg class="w-2.5 h-2.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-300">≥ 500 shadow requests</p>
+                                <p class="text-[9px] text-slate-600 mt-0.5">Minimum evidence threshold</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                            <div class="w-4 h-4 rounded bg-slate-800 flex items-center justify-center mt-0.5">
+                                <svg class="w-2.5 h-2.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-300">No latency regression (p95)</p>
+                                <p class="text-[9px] text-slate-600 mt-0.5">Performance constraint</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                            <div class="w-4 h-4 rounded bg-slate-800 flex items-center justify-center mt-0.5">
+                                <svg class="w-2.5 h-2.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-300">Prediction delta ≤ 0.05</p>
+                                <p class="text-[9px] text-slate-600 mt-0.5">Behavioral stability</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                            <div class="w-4 h-4 rounded bg-slate-800 flex items-center justify-center mt-0.5">
+                                <svg class="w-2.5 h-2.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-300">Error rate unchanged</p>
+                                <p class="text-[9px] text-slate-600 mt-0.5">Accuracy preservation</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Governance Elucidation -->
+                <!-- <div class="mt-6 p-4 rounded-xl bg-slate-950/40 border border-slate-800">
+                    <h3 class="text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-3">
+                        Governance Elucidation
+                    </h3>
+                    <ul class="space-y-2 text-xs text-slate-400">
+                        <li>
+                            • <span class="text-slate-300 font-medium">Simulation does not train models.</span>
+                            Simulation generates signals only. No artifacts, weights, or registries are mutated.
+                        </li>
+                        <li>
+                            • <span class="text-slate-300 font-medium">Production data is unlabeled.</span>
+                            Retraining requires offline, human-labeled data and is intentionally not automated.
+                        </li>
+                        <li>
+                            • <span class="text-slate-300 font-medium">Governance is a state machine.</span>
+                            Decisions progress through explicit states rather than reacting to single events.
+                        </li>
+                        <li>
+                            • <span class="text-slate-300 font-medium">NO_ACTION is the expected outcome.</span>
+                            Most monitoring windows end with no promotion or retraining trigger.
+                        </li>
+                        <li>
+                            • <span class="text-slate-300 font-medium">Promotions can be blocked.</span>
+                            Candidates may be rejected when evidence is insufficient or constraints are violated.
+                        </li>
+                    </ul>
+                </div> -->
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="max-w-[1600px] mx-auto px-6 py-6 grid lg:grid-cols-3 gap-6">
+            
+            <!-- Left Column: Architecture Explorer -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Interactive Architecture -->
+                <div class="panel rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-semibold text-slate-200">System Architecture</h2>
+                        <span class="text-[10px] font-mono text-slate-500">Click nodes to inspect</span>
+                    </div>
+                    
+                    <!-- Pipeline Visualization -->
+                    <div class="relative overflow-x-auto pb-4">
+                        <div class="flex items-center gap-2 min-w-max px-2">
+                            <!-- Data Ingestion -->
+                            <button onclick="selectNode('ingestion')" id="node-ingestion" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Data<br>Ingestion</span>
+                            </button>
+                            
+                            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            
+                            <!-- Feature Contract -->
+                            <button onclick="selectNode('contract')" id="node-contract" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Feature<br>Contract</span>
+                            </button>
+                            
+                            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            
+                            <!-- Training -->
+                            <button onclick="selectNode('training')" id="node-training" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Training</span>
+                            </button>
+                            
+                            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            
+                            <!-- Registry -->
+                            <button onclick="selectNode('registry')" id="node-registry" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Registry</span>
+                            </button>
+                            
+                            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            
+                            <!-- Inference -->
+                            <button onclick="selectNode('inference')" id="node-inference" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Inference</span>
+                            </button>
+                            
+                            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            
+                            <!-- Logging -->
+                            <button onclick="selectNode('logging')" id="node-logging" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Logging</span>
+                            </button>
+                            
+                            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            
+                            <!-- Snapshots -->
+                            <button onclick="selectNode('snapshots')" id="node-snapshots" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Snapshots</span>
+                            </button>
+                            
+                            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            
+                            <!-- Drift Detection -->
+                            <button onclick="selectNode('drift')" id="node-drift" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Drift<br>Detection</span>
+                            </button>
+                            
+                            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            
+                            <!-- Governance -->
+                            <button onclick="selectNode('governance')" id="node-governance" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Governance</span>
+                            </button>
+                            
+                            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            
+                            <!-- Promotion -->
+                            <button onclick="selectNode('promotion')" id="node-promotion" class="node flex flex-col items-center gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/50 w-24">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                                </div>
+                                <span class="text-[10px] text-slate-400 text-center leading-tight">Promotion</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Node Details Panel -->
+                    <div id="nodeDetails" class="mt-4 p-4 rounded-lg bg-slate-950/50 border border-slate-800 animate-fade-in">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <h3 class="text-sm font-semibold text-slate-200 mb-1" id="nodeTitle">Inference Service</h3>
+                                <p class="text-xs text-slate-500" id="nodeDesc">Production model serving with shadow execution capability</p>
+                            </div>
+                            <a href="#" id="nodeCodeRef" class="code-reference hover:text-indigo-400 transition-colors"></a>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <h4 class="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-2">Inputs</h4>
+                                <ul class="space-y-1 text-xs text-slate-400" id="nodeInputs">
+                                    <li>• Validated feature vectors</li>
+                                    <li>• Model version reference</li>
+                                    <li>• Request context (metadata)</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 class="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-2">Outputs</h4>
+                                <ul class="space-y-1 text-xs text-slate-400" id="nodeOutputs">
+                                    <li>• Prediction with confidence</li>
+                                    <li>• Shadow candidate prediction</li>
+                                    <li>• Structured inference log</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3 pt-3 border-t border-slate-800">
+                            <h4 class="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-2">Key Functions</h4>
+                            <div class="flex flex-wrap gap-2" id="nodeFunctions">
+                                <span class="px-2 py-1 rounded bg-slate-900 text-[10px] font-mono text-slate-400">execute_inference()</span>
+                                <span class="px-2 py-1 rounded bg-slate-900 text-[10px] font-mono text-slate-400">execute_shadow()</span>
+                                <span class="px-2 py-1 rounded bg-slate-900 text-[10px] font-mono text-slate-400">log_prediction()</span>
+                            </div>
+                        </div>
+                        <div id="functionDetails" class="hidden mt-4 p-3 rounded-lg bg-slate-950/70 border border-slate-800 animate-fade-in">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="text-[10px] font-mono text-slate-400" id="functionPath">
+                                    src/path/to/file.py
+                                </div>
+                                <button onclick="closeFunctionDetails()" class="text-[10px] text-slate-500 hover:text-slate-300">Close</button>
+                            </div>
+                            <pre class="text-[10px] text-slate-400 font-mono overflow-x-auto leading-relaxed" id="functionCode">
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decision History -->
+                <!-- <div class="panel rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-semibold text-slate-200">Decision History</h2>
+                        <span class="text-[10px] text-slate-500 font-mono">Last 24 hours</span>
+                    </div>
+                    
+                    <div class="space-y-2" id="decisionHistory">
+                        <div class="decision-entry p-3 rounded-lg border-l-2 border-red-500 bg-slate-950/30 cursor-pointer" onclick="toggleDecision(this)">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-[10px] font-mono text-slate-500">06:10 UTC</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-red-500/20 text-[10px] font-mono text-red-400">
+                                        PROMOTION_BLOCKED
+                                    </span>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-600 expand-icon transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">
+                                Candidate rejected due to severe prediction distribution shift
+                            </p>
+                            <div class="hidden mt-3 pt-3 border-t border-slate-800">
+                                <div class="text-[10px] font-mono text-slate-500 space-y-1">
+                                    <p>• Prediction drift: 0.31 (limit: 0.15)</p>
+                                    <p>• Latency delta: +4ms (acceptable)</p>
+                                    <p>• Shadow volume: 1,204 requests</p>
+                                    <p class="text-slate-600 mt-2">
+                                        Outcome: Candidate archived, production unchanged
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="decision-entry p-3 rounded-lg border-l-2 border-slate-700 bg-slate-950/30 cursor-pointer" onclick="toggleDecision(this)">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-[10px] font-mono text-slate-500">14:32 UTC</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">NO_ACTION</span>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-600 expand-icon transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">Shadow volume below threshold (312 / 500)</p>
+                            <div class="hidden mt-3 pt-3 border-t border-slate-800">
+                                <div class="text-[10px] font-mono text-slate-500 space-y-1">
+                                    <p>• Prediction drift: 0.023 (within tolerance)</p>
+                                    <p>• Latency delta: +12ms (acceptable)</p>
+                                    <p>• Error rate: unchanged</p>
+                                    <p class="text-slate-600 mt-2">Rule evaluation: 2/4 passed, 2/4 insufficient data</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="decision-entry p-3 rounded-lg border-l-2 border-slate-700 bg-slate-950/30 cursor-pointer" onclick="toggleDecision(this)">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-[10px] font-mono text-slate-500">11:15 UTC</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">NO_ACTION</span>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-600 expand-icon transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">Feature drift detected but within governance limits</p>
+                            <div class="hidden mt-3 pt-3 border-t border-slate-800">
+                                <div class="text-[10px] font-mono text-slate-500 space-y-1">
+                                    <p>• Numeric drift score: 0.089 (limit: 0.15)</p>
+                                    <p>• Categorical drift: 0.034 (limit: 0.10)</p>
+                                    <p>• No prediction distribution shift</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="decision-entry p-3 rounded-lg border-l-2 border-slate-700 bg-slate-950/30 cursor-pointer" onclick="toggleDecision(this)">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-[10px] font-mono text-slate-500">08:45 UTC</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">NO_ACTION</span>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-600 expand-icon transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">Monitoring window insufficient for evaluation</p>
+                            <div class="hidden mt-3 pt-3 border-t border-slate-800">
+                                <div class="text-[10px] font-mono text-slate-500 space-y-1">
+                                    <p>• Window duration: 3.2 hours (min: 6 hours)</p>
+                                    <p>• Shadow requests: 156 (min: 500)</p>
+                                    <p>• Recommendation: Advance monitoring window</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div> -->
+                <div class="panel rounded-xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold text-slate-200">System Logs</h2>
+                    <span class="text-[10px] text-slate-500 font-mono">Recent</span>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex gap-1 mb-4">
+                    <button class="log-tab active" data-tab="platform">Platform</button>
+                    <button class="log-tab" data-tab="inference">Inference</button>
+                    <button class="log-tab" data-tab="governance">Governance</button>
+                </div>
+
+                <!-- Panels -->
+                <div id="logs-platform" class="log-panel space-y-2 max-h-64 overflow-y-auto"></div>
+                <div id="logs-inference" class="log-panel space-y-2 max-h-64 overflow-y-auto hidden"></div>
+                <div id="logs-governance" class="log-panel space-y-2 max-h-64 overflow-y-auto hidden"></div>
+                </div>
+            </div>
+
+            <!-- Right Column: Status & Metrics -->
+            <div class="space-y-6">
+                
+                <!-- System Health Strip -->
+                <div class="panel rounded-xl p-4">
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">System Health</h2>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="health-card flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                            <span id="dot-inference" class="w-2 h-2 rounded-full bg-emerald-400 status-indicator"></span>
+                            <div>
+                                <p class="text-[10px] text-emerald-400 font-mono uppercase">Inference</p>
+                                <p id="health-inference" class="text-xs text-slate-300">—</p>
+                            </div>
+                        </div>
+                        <div class="health-card flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                            <span id="dot-shadow" class="w-2 h-2 rounded-full bg-amber-400"></span>
+                            <div>
+                                <p class="text-[10px] text-amber-400 font-mono uppercase">Shadow</p>
+                                <p id="health-shadow" class="text-xs text-slate-300">—</p>
+                            </div>
+                        </div>
+                        <div class="health-card flex items-center gap-2 p-2 rounded-lg bg-slate-800 border border-slate-700">
+                            <span id="dot-drift" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                            <div>
+                                <p id="label-drift" class="text-[10px] font-mono uppercase">Drift</p>
+                                <p id="health-drift" class="text-xs text-slate-400">—</p>
+                            </div>
+                        </div>
+                        <div class="health-card flex items-center gap-2 p-2 rounded-lg bg-slate-800 border border-slate-700">
+                            <span id="dot-governance" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                            <div>
+                                <p id="label-governance" class="text-[10px] font-mono uppercase">Governance</p>
+                                <p id="health-governance" class="text-xs text-slate-400">—</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Metrics -->
+                <div class="panel rounded-xl p-4">
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Current Window</h2>
+                    <div class="space-y-3">
+                        <div class="metric-card p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[10px] text-slate-500 font-mono uppercase">Requests</span>
+                                <span class="text-[10px]" id="metric-requests-delta">—</span>
+                            </div>
+                            <p class="text-xl font-semibold text-slate-200" id="metric-requests">—</p>
+                            <p class="text-[10px] text-slate-600">baseline: 2,542</p>
+                        </div>
+                        
+                        <div class="metric-card p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[10px] text-slate-500 font-mono uppercase">Prediction Alignment</span>
+                                <span class="text-[10px]" id="metric-prediction-delta">—</span>
+                            </div>
+                            <p class="text-xl font-semibold text-slate-200" id="metric-prediction-shadow">—</p>
+                            <p class="text-[10px] text-slate-600" id="metric-prediction-baseline">baseline: —</p>
+                        </div>
+                        
+                        <div class="metric-card p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[10px] text-slate-500 font-mono uppercase">p95 Latency</span>
+                                <span class="text-[10px]" id="metric-latency-delta">—</span>
+                            </div>
+                            <p class="text-xl font-semibold text-slate-200" id="metric-latency-p95">—</p>
+                            <p class="text-[10px] text-slate-600">baseline: 116ms</p>
+                        </div>
+                        
+                        <div class="metric-card p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[10px] text-slate-500 font-mono uppercase">Drift Score</span>
+                                <span class="text-[10px]" id="metric-drift-status">—</span>
+                            </div>
+                            <p class="text-xl font-semibold text-slate-200" id="metric-drift-score">—</p>
+                            <p class="text-[10px] text-slate-600">limit: 0.15</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Artifact Browser -->
+                <div class="panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Artifacts</h2>
+                        <div class="flex gap-1">
+                            <button onclick="switchArtifactTab('models')" class="artifact-tab px-2 py-1 rounded text-[10px] font-mono bg-slate-800 text-slate-300" data-tab="models">Models</button>
+                            <button onclick="switchArtifactTab('snapshots')" class="artifact-tab px-2 py-1 rounded text-[10px] font-mono text-slate-500 hover:text-slate-300" data-tab="snapshots">Snapshots</button>
+                        </div>
+                    </div>
+                    
+                    <div id="artifactList" class="space-y-1 max-h-48 overflow-y-auto">
+                    </div>
+                </div>
+
+                <!-- Inference Log -->
+                <div class="panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Recent Inferences</h2>
+                        <span class="px-2 py-0.5 rounded bg-slate-800 text-[9px] text-slate-500 font-mono">Live</span>
+                    </div>
+                    
+                    <div class="space-y-1 max-h-48 overflow-y-auto text-[10px] font-mono">
+                        <div class="log-row p-2 rounded flex items-center justify-between cursor-pointer" onclick="toggleLog(this)">
+                            <div class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                <span class="text-slate-500">14:33:12</span>
+                                <span class="text-slate-400 truncate max-w-[120px]">req_8f3a9d2e</span>
+                            </div>
+                            <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 text-[9px]">shadow</span>
+                        </div>
+                        <div class="hidden p-2 bg-slate-950/50 rounded border-l-2 border-slate-700">
+                            <pre class="text-[9px] text-slate-500 overflow-x-auto">{"prediction": 0.847, "confidence": 0.923, "model": "v1.1.0-rc2", "latency_ms": 118}</pre>
+                        </div>
+                        
+                        <div class="log-row p-2 rounded flex items-center justify-between cursor-pointer" onclick="toggleLog(this)">
+                            <div class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                <span class="text-slate-500">14:33:08</span>
+                                <span class="text-slate-400 truncate max-w-[120px]">req_7b2c1f4a</span>
+                            </div>
+                            <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 text-[9px]">shadow</span>
+                        </div>
+                        <div class="hidden p-2 bg-slate-950/50 rounded border-l-2 border-slate-700">
+                            <pre class="text-[9px] text-slate-500 overflow-x-auto">{"prediction": 0.891, "confidence": 0.887, "model": "v1.1.0-rc2", "latency_ms": 124}</pre>
+                        </div>
+                        
+                        <div class="log-row p-2 rounded flex items-center justify-between cursor-pointer" onclick="toggleLog(this)">
+                            <div class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                                <span class="text-slate-500">14:33:05</span>
+                                <span class="text-slate-400 truncate max-w-[120px]">req_9e4d8a1b</span>
+                            </div>
+                            <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 text-[9px]">prod</span>
+                        </div>
+                        <div class="hidden p-2 bg-slate-950/50 rounded border-l-2 border-slate-700">
+                            <pre class="text-[9px] text-slate-500 overflow-x-auto">{"prediction": 0.834, "confidence": 0.901, "model": "v1.0.1", "latency_ms": 112}</pre>
+                        </div>
+                    </div>
+                    
+                    <p class="mt-3 text-[9px] text-slate-600 text-center flex items-center justify-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        Logs are append-only. Inputs are redacted.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer Links -->
+        <div class="max-w-[1600px] mx-auto px-6 py-8 border-t border-slate-800/50">
+            <div class="flex flex-wrap justify-center gap-6 text-xs">
+                <a href="https://github.com/your-org/ml-platform" target="_blank" class="flex items-center gap-2 text-slate-500 hover:text-indigo-400 transition-colors">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub Repository
+                </a>
+                <a href="#" class="flex items-center gap-2 text-slate-500 hover:text-indigo-400 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                    Main Project Site
+                </a>
+                <a href="#" class="flex items-center gap-2 text-slate-500 hover:text-indigo-400 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    System Design Write-up
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.__ARTIFACT_STATE__ = {
+            models: null,
+            snapshots: null
+        };
+        // Shadow analysis state
+        window.__SHADOW_ANALYSIS__ = null;
+        // Simulation State
+        // === Load System State & UI Updaters ===
+        // Deterministic setter for system health cards
+        function setHealth(id, text, color) {
+          const value = document.getElementById(id);
+          const key = id.split("-")[1]; // inference / shadow / drift / governance
+          const dot = document.getElementById("dot-" + key);
+          const label = document.getElementById("label-" + key);
+          const card = value?.closest(".health-card");
+
+          if (!value || !dot || !card) return;
+
+          const COLORS = {
+            green: ["text-emerald-400", "bg-emerald-400", "bg-emerald-500/10", "border-emerald-500/20"],
+            amber: ["text-amber-400", "bg-amber-400", "bg-amber-500/10", "border-amber-500/20"],
+            red:   ["text-red-400", "bg-red-400", "bg-red-500/10", "border-red-500/20"],
+            gray:  ["text-slate-400", "bg-slate-500", "bg-slate-800", "border-slate-700"]
+          };
+
+          // reset value, dot, card
+          value.className = "text-xs";
+          dot.className = "w-2 h-2 rounded-full";
+          card.className = "health-card flex items-center gap-2 p-2 rounded-lg";
+
+          // reset label
+          if (label) {
+            label.className = "text-[10px] font-mono uppercase";
+          }
+
+          const [textColor, dotColor, bg, border] = COLORS[color] || COLORS.gray;
+
+          value.textContent = text;
+          value.classList.add(textColor);
+          dot.classList.add(dotColor, "status-indicator");
+          card.classList.add(bg, border);
+
+          if (label) {
+            label.classList.add(textColor);
+          }
+        }
+
+        async function loadSystemState() {
+          try {
+            const results = await Promise.allSettled([
+              fetchJSON("/models/active"),
+              fetchJSON("/drift/current"),
+              fetchJSON("/governance/current"),
+              fetchJSON("/shadow"),
+              fetchJSON("/logs")
+            ]);
+
+            const models = results[0].status === "fulfilled" ? results[0].value : null;
+            const drift = results[1].status === "fulfilled" ? results[1].value : null;
+            const governance = results[2].status === "fulfilled" ? results[2].value : null;
+            const shadow = results[3].status === "fulfilled" ? results[3].value : null;
+            const logs = results[4].status === "fulfilled" ? results[4].value : null;
+            if (logs) {
+                ["platform", "inference", "governance"].forEach(layer => {
+                    if (logs[layer]?.events) {
+                    logs[layer].events = [...logs[layer].events]
+                        .sort((a, b) => b.timestamp - a.timestamp);
+                    }
+                });
+
+                renderLogs(logs);
+            }
+            // console.log("LOG PAYLOAD:", logs);
+            // Set global shadow analysis state
+            window.__SHADOW_ANALYSIS__ = shadow?.status === "AVAILABLE" ? shadow.analysis : null;
+            updateCurrentWindowFromAnalysis();
+            
+
+            // Inference
+            if (models && models.status === "ACTIVE") {
+                setHealth("health-inference", "Healthy", "green");
+            } else if (models) {
+                setHealth("health-inference", "Degraded", "amber");
+            } else {
+                setHealth("health-inference", "Unavailable", "gray");
+            }
+
+
+            // --- Shadow ---
+            if (!governance) {
+            setHealth("health-shadow", "Unavailable", "gray");
+
+            } else if (governance.state === "SHADOW") {
+            setHealth("health-shadow", "Shadowing", "amber");
+
+            } else if (governance.state === "PROMOTABLE") {
+            setHealth("health-shadow", "Ready", "green");
+
+            } else {
+            setHealth("health-shadow", "Inactive", "gray");
+            }
+
+            // --- Drift ---
+            if (!drift) {
+                setHealth("health-drift", "Unavailable", "gray");
+            } else if (drift.decision === "RETRAIN_REQUIRED") {
+                setHealth("health-drift", "Retrain Required", "red");
+            } else if (
+                drift.decision === "RETRAIN_RECOMMENDED" ||
+                drift.decision === "MONITOR"
+            ) {
+                setHealth("health-drift", "Monitoring", "amber");
+            } else {
+                setHealth("health-drift", "Stable", "green");
+            }
+
+            // --- Governance (STATE-BASED) ---
+            if (!governance) {
+            setHealth("health-governance", "Unavailable", "gray");
+
+            } else if (governance.state === "PROMOTABLE") {
+            setHealth("health-governance", "Promotable", "green");
+
+            } else if (governance.state === "SHADOW") {
+            setHealth("health-governance", "Evaluating", "amber");
+
+            } else {
+            setHealth("health-governance", "Stable", "green");
+            }
+
+          } catch (e) {
+            console.error("Failed to load system state", e);
+          }
+        }
+
+function updateCurrentWindowFromAnalysis() {
+  const a = window.__SHADOW_ANALYSIS__;
+  if (!a) return;
+
+  // --- Requests ---
+  const requests = a.counts.paired_requests;
+  document.getElementById("metric-requests").textContent =
+    requests.toLocaleString();
+  document.getElementById("metric-requests-delta").textContent = "shadow";
+
+  document.querySelector("#metric-requests")
+    .nextElementSibling.textContent =
+    "baseline: " + requests.toLocaleString();
+
+  // --- Prediction Alignment ---
+  const prodMean = a.production_baseline.mean_prediction;
+  const delta = a.prediction_comparison.mean_delta;
+  const shadowMean = prodMean + delta;
+
+  const shadowEl = document.getElementById("metric-prediction-shadow");
+  const baselineEl = document.getElementById("metric-prediction-baseline");
+  const deltaEl = document.getElementById("metric-prediction-delta");
+
+  shadowEl.textContent = shadowMean.toFixed(3);
+  baselineEl.textContent = "baseline: " + prodMean.toFixed(3);
+
+  deltaEl.textContent = (delta >= 0 ? "+" : "") + delta.toFixed(3);
+  deltaEl.className =
+    "text-[10px] " +
+    (Math.abs(delta) <= 0.05
+      ? "text-emerald-400"
+      : Math.abs(delta) <= 0.15
+      ? "text-amber-400"
+      : "text-red-400");
+
+  // --- Latency (p95) ---
+  // production baseline inferred as (shadow - delta)
+  const shadowP95 = a.latency_comparison.p95_shadow_ms;
+  const deltaP95 = a.latency_comparison.mean_delta_ms;
+  const prodP95 = shadowP95 - deltaP95;
+
+  document.getElementById("metric-latency-p95").textContent =
+    shadowP95.toFixed(1) + "ms";
+
+  const latencyDeltaEl = document.getElementById("metric-latency-delta");
+  latencyDeltaEl.textContent =
+    (deltaP95 >= 0 ? "+" : "") + deltaP95.toFixed(1) + "ms";
+  latencyDeltaEl.className =
+    "text-[10px] " + (deltaP95 <= 5 ? "text-emerald-400" : "text-amber-400");
+
+  document.querySelector("#metric-latency-p95")
+    .nextElementSibling.textContent =
+    "baseline: " + prodP95.toFixed(1) + "ms";
+
+  // --- Drift score ---
+  const drift = a.prediction_comparison.p95_abs_delta;
+  document.getElementById("metric-drift-score").textContent =
+    drift.toFixed(3);
+
+  const driftStatusEl = document.getElementById("metric-drift-status");
+  if (drift <= 0.05) {
+    driftStatusEl.textContent = "OK";
+    driftStatusEl.className = "text-[10px] text-emerald-400";
+  } else if (drift <= 0.15) {
+    driftStatusEl.textContent = "MONITOR";
+    driftStatusEl.className = "text-[10px] text-amber-400";
+  } else {
+    driftStatusEl.textContent = "UNSTABLE";
+    driftStatusEl.className = "text-[10px] text-red-400";
+  }
+}
+
+        // === Initial page load ===
+        document.addEventListener("DOMContentLoaded", async () => {
+            await loadArtifacts();      // MUST be first
+            renderArtifacts("models");  // MUST be after data exists
+            loadSystemState();          // independent
+        });
+
+        async function loadArtifacts() {
+            // models
+            const payload = await fetchJSON("/models/all");
+            window.__ARTIFACT_STATE__.models = payload.artifacts;
+
+            // active model (authoritative prod pointer)
+            try {
+                const active = await fetchJSON("/models/active");
+                window.__ACTIVE_MODEL__ = active?.model || null;
+            } catch {
+                window.__ACTIVE_MODEL__ = null;
+            }
+
+            // snapshots
+            try {
+                const snap = await fetchJSON("/snapshots/current");
+                window.__ARTIFACT_STATE__.snapshots =
+                    snap.status === "AVAILABLE" ? snap.snapshot : null;
+            } catch {
+                window.__ARTIFACT_STATE__.snapshots = null;
+            }
+        }
+        let simulationActive = false;
+        let trafficVolume = 2400;
+        let driftSeverity = 'mild';
+        let shadowCoverage = 15;
+
+        // Node Data
+        const nodeData = {
+            ingestion: {
+                title: 'Data Ingestion',
+                desc: 'Raw data validation and schema enforcement',
+                inputs: ['Raw feature data', 'Schema contracts', 'Validation rules'],
+                outputs: ['Validated records', 'Schema violations log', 'Ingestion metrics'],
+                functions: [
+                    { name: 'validate_schema', desc: 'Validates incoming data against the expected schema and types.' },
+                    { name: 'enforce_contracts', desc: 'Applies feature contracts to incoming data and flags violations.' },
+                    { name: 'route_to_training', desc: 'Routes validated records to the training pipeline.' }
+                ],
+                code: 'src/data/ingestion.py'
+            },
+            contract: {
+                title: 'Feature Contract',
+                desc: 'Declarative feature specifications and drift detection',
+                inputs: ['Feature definitions', 'Statistical profiles', 'Baseline distributions'],
+                outputs: ['Contract violations', 'Drift signals', 'Feature metadata'],
+                functions: [
+                    { name: 'validate_distribution', desc: 'Checks feature distributions against training baselines.' },
+                    { name: 'check_bounds', desc: 'Verifies that feature values remain within declared bounds.' },
+                    { name: 'emit_drift_event', desc: 'Emits a signal if drift or contract violation is detected.' }
+                ],
+                code: 'src/features/contract.py'
+            },
+            training: {
+                title: 'Training Pipeline',
+                desc: 'Reproducible model training with versioned artifacts',
+                inputs: ['Training data', 'Hyperparameters', 'Feature contracts'],
+                outputs: ['Trained model', 'Metrics report', 'Training logs'],
+                functions: [
+                    { name: 'train_model', desc: 'Trains a model using provided data and hyperparameters.' },
+                    { name: 'evaluate_metrics', desc: 'Evaluates model performance and computes metrics.' },
+                    { name: 'register_artifact', desc: 'Registers the trained model as a versioned artifact.' }
+                ],
+                code: 'src/training/pipeline.py'
+            },
+            registry: {
+                title: 'Model Registry',
+                desc: 'Immutable model storage with lineage tracking',
+                inputs: ['Trained models', 'Evaluation results', 'Promotions rules'],
+                outputs: ['Versioned artifacts', 'Lineage graphs', 'Promotion candidates'],
+                functions: [
+                    { name: 'store_model', desc: 'Stores the trained model artifact with versioning.' },
+                    { name: 'track_lineage', desc: 'Tracks lineage and dependencies between model versions.' },
+                    { name: 'validate_candidate', desc: 'Validates if a model is eligible for promotion.' }
+                ],
+                code: 'src/registry/store.py'
+            },
+            inference: {
+                title: 'Inference Service',
+                desc: 'Production model serving with shadow execution',
+                inputs: ['Feature vectors', 'Model references', 'Request context'],
+                outputs: ['Predictions', 'Shadow predictions', 'Inference logs'],
+                functions: [
+                    { name: 'execute_inference', desc: 'Runs inference on production model and returns prediction.' },
+                    { name: 'execute_shadow', desc: 'Executes inference using the shadow candidate model.' },
+                    { name: 'log_prediction', desc: 'Logs the prediction result and associated metadata.' }
+                ],
+                code: 'src/inference/service.py'
+            },
+            logging: {
+                title: 'Structured Logging',
+                desc: 'Append-only event stream for observability',
+                inputs: ['Inference events', 'System metrics', 'Error traces'],
+                outputs: ['Log streams', 'Aggregated metrics', 'Alert triggers'],
+                functions: [
+                    { name: 'append_log', desc: 'Appends a new event to the structured log stream.' },
+                    { name: 'aggregate_window', desc: 'Aggregates logs over a monitoring window.' },
+                    { name: 'trigger_alert', desc: 'Triggers alerts based on log patterns or errors.' }
+                ],
+                code: 'src/logging/structured.py'
+            },
+            snapshots: {
+                title: 'Monitoring Snapshots',
+                desc: 'Time-windowed aggregations for drift detection',
+                inputs: ['Inference logs', 'Window configurations', 'Baseline stats'],
+                outputs: ['Snapshot objects', 'Drift scores', 'Comparison reports'],
+                functions: [
+                    { name: 'create_snapshot', desc: 'Creates a snapshot of recent inference statistics.' },
+                    { name: 'compare_baseline', desc: 'Compares current window to baseline statistics.' },
+                    { name: 'compute_drift', desc: 'Computes drift scores between current and baseline.' }
+                ],
+                code: 'src/monitoring/snapshots.py'
+            },
+            drift: {
+                title: 'Drift Detection',
+                desc: 'Statistical tests for data and prediction drift',
+                inputs: ['Current snapshots', 'Baseline snapshots', 'Drift thresholds'],
+                outputs: ['Drift decisions', 'Statistical reports', 'Governance events'],
+                functions: [
+                    { name: 'compute_numeric_drift', desc: 'Computes statistical drift for numeric features.' },
+                    { name: 'compute_prediction_shift', desc: 'Calculates drift in prediction distributions.' },
+                    { name: 'make_drift_decision', desc: 'Makes a decision based on drift statistics and thresholds.' }
+                ],
+                code: 'src/monitoring/drift_decision.py'
+            },
+            governance: {
+                title: 'Governance Controller',
+                desc: 'Rule-based promotion decisions with evidence requirements',
+                inputs: ['Shadow metrics', 'Drift reports', 'Governance rules'],
+                outputs: ['Promotion decisions', 'Evidence bundles', 'Audit trails'],
+                functions: [
+                    { name: 'evaluate_promotion', desc: 'Evaluates if a candidate model meets promotion criteria.' },
+                    { name: 'check_thresholds', desc: 'Checks evidence and metrics against governance rules.' },
+                    { name: 'record_decision', desc: 'Records the outcome and supporting evidence for audit.' }
+                ],
+                code: 'src/governance/controller.py'
+            },
+            promotion: {
+                title: 'Promotion Gate',
+                desc: 'Controlled rollout with rollback capability',
+                inputs: ['Promotion approval', 'Shadow validation', 'Canary results'],
+                outputs: ['Model promotion', 'Traffic shifting', 'Rollback triggers'],
+                functions: [
+                    { name: 'approve_promotion', desc: 'Approves a model for production promotion.' },
+                    { name: 'shift_traffic', desc: 'Shifts production traffic to the promoted model.' },
+                    { name: 'trigger_rollback', desc: 'Triggers rollback to previous version if needed.' }
+                ],
+                code: 'src/promotion/gate.py'
+            }
+        };
+
+        function toggleSimulation() {
+            simulationActive = !simulationActive;
+            const toggle = document.getElementById('simToggle');
+            const thumb = document.getElementById('simThumb');
+            const controls = document.getElementById('simControls');
+            
+            if (simulationActive) {
+                toggle.classList.remove('bg-slate-800');
+                toggle.classList.add('bg-amber-600');
+                thumb.classList.remove('left-1', 'bg-slate-600');
+                thumb.classList.add('left-8', 'bg-white');
+                controls.classList.remove('hidden');
+            } else {
+                toggle.classList.add('bg-slate-800');
+                toggle.classList.remove('bg-amber-600');
+                thumb.classList.add('left-1', 'bg-slate-600');
+                thumb.classList.remove('left-8', 'bg-white');
+                controls.classList.add('hidden');
+            }
+        }
+
+        function updateTraffic(value) {
+            trafficVolume = value;
+            document.getElementById('trafficValue').textContent = parseInt(value).toLocaleString() + ' req';
+            document.getElementById('metricRequests').textContent = parseInt(value).toLocaleString();
+        }
+
+        function updateDrift(value) {
+            driftSeverity = value;
+            // Update drift score based on severity
+            const score = value === 'none' ? '0.023' : value === 'mild' ? '0.089' : '0.247';
+            // This would update the drift metric card in a real implementation
+        }
+
+        function updateShadow(value) {
+            shadowCoverage = value;
+            document.getElementById('shadowValue').textContent = value + '%';
+        }
+
+        function advanceWindow() {
+            // Simulate advancing the monitoring window
+            const history = document.getElementById('decisionHistory');
+            const newDecision = document.createElement('div');
+            newDecision.className = 'decision-entry p-3 rounded-lg border-l-2 border-slate-700 bg-slate-950/30 cursor-pointer animate-slide-up';
+            newDecision.onclick = function() { toggleDecision(this); };
+            newDecision.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] font-mono text-slate-500">${new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: false})} UTC</span>
+                        <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">NO_ACTION</span>
+                    </div>
+                    <svg class="w-4 h-4 text-slate-600 expand-icon transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+                <p class="text-xs text-slate-400 mt-2">Shadow volume below threshold (${Math.floor(trafficVolume * shadowCoverage / 100)} / 500)</p>
+                <div class="hidden mt-3 pt-3 border-t border-slate-800">
+                    <div class="text-[10px] font-mono text-slate-500 space-y-1">
+                        <p>• Prediction drift: 0.0${Math.floor(Math.random() * 50)} (within tolerance)</p>
+                        <p>• Latency delta: +${Math.floor(Math.random() * 20)}ms (acceptable)</p>
+                        <p>• Error rate: unchanged</p>
+                        <p class="text-slate-600 mt-2">Rule evaluation: 2/4 passed, 2/4 insufficient data</p>
+                    </div>
+                </div>
+            `;
+            history.insertBefore(newDecision, history.firstChild);
+        }
+
+        function selectNode(nodeId) {
+            // Remove active class from all nodes
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+            // Add active class to selected
+            document.getElementById('node-' + nodeId).classList.add('active');
+
+            // Update details panel
+            const data = nodeData[nodeId];
+            document.getElementById('nodeTitle').textContent = data.title;
+            document.getElementById('nodeDesc').textContent = data.desc;
+
+            // Update code reference link
+            const codeRef = document.getElementById('nodeCodeRef');
+            codeRef.textContent = data.code;
+            codeRef.href = "#";
+
+            // Update inputs
+            const inputsList = document.getElementById('nodeInputs');
+            inputsList.innerHTML = data.inputs.map(i => `<li class="flex items-start gap-2"><span class="text-slate-600 mt-1">•</span><span>${i}</span></li>`).join('');
+
+            // Update outputs
+            const outputsList = document.getElementById('nodeOutputs');
+            outputsList.innerHTML = data.outputs.map(o => `<li class="flex items-start gap-2"><span class="text-slate-600 mt-1">•</span><span>${o}</span></li>`).join('');
+
+            // Update functions (make each chip clickable)
+            const functionsList = document.getElementById('nodeFunctions');
+            functionsList.innerHTML = data.functions.map(f =>
+                `<span onclick="showFunctionDetails('${f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${data.code.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', \`${f.desc.replace(/`/g, '\\`')}\`)" class="px-2 py-1 rounded bg-slate-900 text-[10px] font-mono text-slate-400 cursor-pointer hover:text-indigo-400 hover:bg-slate-800 transition-colors">${f.name}()</span>`
+            ).join('');
+        }
+
+        function toggleDecision(element) {
+            const details = element.querySelector('div:last-child');
+            const icon = element.querySelector('.expand-icon');
+            
+            if (details.classList.contains('hidden')) {
+                details.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                details.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
+
+        function toggleLog(element) {
+            const next = element.nextElementSibling;
+            if (next && next.tagName === 'DIV') {
+                next.classList.toggle('hidden');
+            }
+        }
+
+function switchArtifactTab(tab) {
+  document.querySelectorAll(".artifact-tab").forEach(t => {
+    t.classList.toggle("bg-slate-800", t.dataset.tab === tab);
+    t.classList.toggle("text-slate-300", t.dataset.tab === tab);
+    t.classList.toggle("text-slate-500", t.dataset.tab !== tab);
+  });
+
+  renderArtifacts(tab);
+}
+        function showFunctionDetails(fnName, filePath, description) {
+            const panel = document.getElementById('functionDetails');
+            document.getElementById('functionPath').textContent = filePath;
+            document.getElementById('functionCode').textContent =
+`# ${description}
+def ${fnName}(...):
+    ...
+`;
+            panel.classList.remove('hidden');
+        }
+
+        function closeFunctionDetails() {
+            document.getElementById('functionDetails').classList.add('hidden');
+        }
+        // Explicit default selection
+        selectNode('inference');
+    
+function renderArtifacts(tab) {
+    const list = document.getElementById("artifactList");
+    list.innerHTML = "";
+
+    if (tab === "models") {
+        if (!window.__ARTIFACT_STATE__.models) {
+            list.innerHTML = `
+                <div class="p-2 text-xs text-slate-500">
+                    No model artifacts
+                </div>`;
+            return;
+        }
+        renderModelArtifacts(window.__ARTIFACT_STATE__.models);
+        return;
+    }
+
+    if (tab === "snapshots") {
+        renderSnapshotArtifacts();
+        return;
+    }
+}
+
+function renderSnapshotArtifacts() {
+    const list = document.getElementById("artifactList");
+    const snap = window.__ARTIFACT_STATE__.snapshots;
+
+    if (!snap) {
+        list.innerHTML = `
+            <div class="p-2 text-xs text-slate-500 text-center">
+                No snapshots available
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = `
+        <div class="artifact-item p-2 rounded flex items-start gap-2">
+            <svg class="w-3.5 h-3.5 text-indigo-400 mt-0.5"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+            </svg>
+            <div>
+                <div class="text-xs font-mono text-slate-300">
+                    ${snap.model_name}/${snap.model_version}
+                </div>
+                <div class="text-[10px] font-mono text-slate-500">
+                    ${snap.window.duration_minutes} min · ${snap.volume.n_requests} requests
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderModelArtifacts(artifacts) {
+    const list = document.getElementById("artifactList");
+    list.innerHTML = "";
+
+    const active = window.__ACTIVE_MODEL__;
+    const rows = [];
+    const seen = new Set();
+
+    // --- PRODUCTION (authoritative from /models/active) ---
+    if (active && active.model_name && active.model_version) {
+        const key = `production:${active.model_name}:${active.model_version}`;
+        seen.add(key);
+        rows.push({
+            name: active.model_name,
+            version: active.model_version,
+            stage: "production"
+        });
+    }
+
+    // --- SHADOW (candidates only, never production version) ---
+    (artifacts.archived || []).forEach(a => {
+        if (!a.source_key || !a.source_key.endsWith("metadata.json")) return;
+        if (!a.model_name) return;
+
+        const isCandidate = a.source_key.includes("candidate");
+        if (!isCandidate) return;
+
+        const version = a.model_version || "candidate";
+        const key = `shadow:${a.model_name}:${version}`;
+        if (seen.has(key)) return;
+
+        seen.add(key);
+        rows.push({
+            name: a.model_name,
+            version,
+            stage: "shadow"
+        });
+    });
+
+    // --- ARCHIVED (registry versions only, exclude production version) ---
+    (artifacts.archived || []).forEach(a => {
+        if (!a.source_key || !a.source_key.endsWith("metadata.json")) return;
+        if (!a.model_name || !a.model_version) return;
+        if (a.source_key.includes("candidate")) return;
+
+        // skip production version (already rendered)
+        if (
+            active &&
+            a.model_name === active.model_name &&
+            a.model_version === active.model_version
+        ) {
+            return;
+        }
+
+        const key = `archived:${a.model_name}:${a.model_version}`;
+        if (seen.has(key)) return;
+
+        seen.add(key);
+        rows.push({
+            name: a.model_name,
+            version: a.model_version,
+            stage: "archived"
+        });
+    });
+
+    if (!rows.length) {
+        list.innerHTML = `
+            <div class="text-[10px] text-slate-600 text-center py-4">
+                No model artifacts
+            </div>`;
+        return;
+    }
+
+    rows.forEach(m => {
+        const color =
+            m.stage === "production" ? "text-emerald-400" :
+            m.stage === "shadow" ? "text-amber-400" :
+            "text-slate-500";
+
+        list.innerHTML += `
+            <div class="artifact-item p-2 rounded flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <div>
+                    <div class="text-xs font-mono text-slate-300">
+                        ${m.name}/${m.version}
+                    </div>
+                    <div class="text-[10px] font-mono ${color}">
+                        ${m.stage}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    }
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.classList.contains("log-tab")) return;
+
+        document.querySelectorAll(".log-tab").forEach(b => b.classList.remove("active"));
+        e.target.classList.add("active");
+
+        const tab = e.target.dataset.tab;
+        ["platform", "inference", "governance"].forEach(t => {
+            document.getElementById("logs-" + t)
+            .classList.toggle("hidden", t !== tab);
+        });
+        });
+
+        // Render logs
+        function renderLogs(payload) {
+            ["platform", "inference", "governance"].forEach(layer => {
+                const el = document.getElementById("logs-" + layer);
+                if (!el) return;
+
+                const events = [...(payload?.[layer]?.events || [])];
+                el.innerHTML = "";
+
+                console.log("Rendering logs", payload);
+
+                if (!events.length) {
+                el.innerHTML = `
+                    <div class="text-xs text-slate-500 italic">
+                    No ${layer} logs in this window
+                    </div>`;
+                return;
+                }
+
+                events.forEach(e => {
+                const ts = new Date(e.timestamp).toISOString().slice(11, 19);
+                el.innerHTML += `
+                    <div class="p-2 rounded bg-slate-950/40 border border-slate-800 text-[10px] font-mono">
+                    <span class="text-slate-500">${ts} UTC</span>
+                    <pre class="mt-1 text-slate-300">${e.message}</pre>
+                    </div>`;
+                });
+            });
+            }
+
+        function renderLogs(logs) {
+  if (!logs) return;
+
+  const layers = ["platform", "inference", "governance"];
+
+  layers.forEach(layer => {
+    const container = document.getElementById(`logs-${layer}`);
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    const events = logs[layer]?.events || [];
+
+    if (events.length === 0) {
+      container.innerHTML = `
+        <div class="text-[10px] text-slate-500 font-mono p-3">
+          No recent ${layer} logs
+        </div>`;
+      return;
+    }
+
+    events.forEach(e => {
+      const time = new Date(e.timestamp).toISOString().slice(11, 19);
+
+      const row = document.createElement("div");
+      row.className =
+        "log-row p-2 rounded bg-slate-950/40 border border-slate-800 text-[10px] font-mono";
+
+      row.innerHTML = `
+        <div class="flex items-start gap-3">
+          <span class="text-slate-500">${time}</span>
+          <pre class="text-slate-400 whitespace-pre-wrap break-all">${e.message}</pre>
+        </div>
+      `;
+
+      container.appendChild(row);
+    });
+  });
+}
+
+document.querySelectorAll(".log-tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab;
+
+    // activate tab
+    document.querySelectorAll(".log-tab")
+      .forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    // show panel
+    ["platform", "inference", "governance"].forEach(l => {
+      const panel = document.getElementById(`logs-${l}`);
+      if (!panel) return;
+      panel.classList.toggle("hidden", l !== tab);
+    });
+  });
+});
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 {
   "training_data": {
     "source": "openml_credit_default",
-    "end_index": 21000
+    "end_index": 50000
   },
   "feature_contract": {
     "version": "968ad9f7c1c9",
@@ -13,13 +13,13 @@
     "colsample_bytree": 0.8,
     "importance_type": "split",
     "learning_rate": 0.05,
-    "max_depth": -1,
-    "min_child_samples": 20,
+    "max_depth": 3,
+    "min_child_samples": 100,
     "min_child_weight": 0.001,
     "min_split_gain": 0.0,
-    "n_estimators": 300,
+    "n_estimators": 30,
     "n_jobs": -1,
-    "num_leaves": 31,
+    "num_leaves": 8,
     "objective": "binary",
     "random_state": 42,
     "reg_alpha": 0.0,
@@ -28,7 +28,12 @@
     "subsample_for_bin": 200000,
     "subsample_freq": 0
   },
+  "baseline_comparison": {
+    "baseline_version": "baseline-v1",
+    "roc_auc_delta": null,
+    "pr_auc_delta": null
+  },
   "model_name": "lightgbm",
   "model_version": "v1.0.0",
-  "registered_at": "2026-01-29T18:12:35.851710Z"
+  "registered_at": "2026-02-04T16:00:54.207472Z"
 }

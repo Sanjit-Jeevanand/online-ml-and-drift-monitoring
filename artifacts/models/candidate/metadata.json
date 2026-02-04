@@ -1,7 +1,7 @@
 {
   "training_data": {
     "source": "openml_credit_default",
-    "end_index": 21000
+    "end_index": 50000
   },
   "feature_contract": {
     "version": "968ad9f7c1c9",
@@ -29,7 +29,7 @@
     "subsample_freq": 0
   },
   "model_name": "lightgbm",
-  "candidate_version": "candidate-20260129-191942",
-  "trained_at": "2026-01-29T19:19:42.658523+00:00",
-  "registered_at": "2026-01-29T19:19:42.658526+00:00"
+  "candidate_version": "candidate-20260204-160147",
+  "trained_at": "2026-02-04T16:01:47.528697+00:00",
+  "registered_at": "2026-02-04T16:01:47.528701+00:00"
 }

@@ -1,8 +1,9 @@
 {
-  "triggered_at": "2026-01-29T15:57:43.396487+00:00",
-  "decision": "RETRAIN_RECOMMENDED",
-  "severity": "high",
+  "decision": "RETRAIN",
+  "severity": "medium",
   "reasons": [
-    "Insufficient or unstable traffic volume"
-  ]
+    "prediction_distribution_shift_detected",
+    "shadow_candidate_underperforming"
+  ],
+  "generated_at": "2026-02-04T12:03:51Z"
 }

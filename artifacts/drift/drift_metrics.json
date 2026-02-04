@@ -1,0 +1,42 @@
+{
+  "numeric_ks": {
+    "LIMIT_BAL": 0.043,
+    "AGE": 0.065,
+    "BILL_AMT1": 0.039,
+    "BILL_AMT2": 0.039,
+    "BILL_AMT3": 0.029,
+    "BILL_AMT4": 0.033,
+    "BILL_AMT5": 0.038,
+    "BILL_AMT6": 0.037,
+    "PAY_AMT1": 0.035,
+    "PAY_AMT2": 0.036,
+    "PAY_AMT3": 0.041,
+    "PAY_AMT4": 0.047,
+    "PAY_AMT5": 0.041,
+    "PAY_AMT6": 0.049,
+    "SEX_1.0": 0.044,
+    "SEX_2.0": 0.027,
+    "EDUCATION_0.0": 0.035,
+    "EDUCATION_1.0": 0.059,
+    "EDUCATION_2.0": 0.041,
+    "EDUCATION_3.0": 0.052,
+    "EDUCATION_4.0": 0.068,
+    "EDUCATION_5.0": 0.033,
+    "EDUCATION_6.0": 0.03,
+    "MARRIAGE_0.0": 0.029,
+    "MARRIAGE_1.0": 0.02,
+    "MARRIAGE_2.0": 0.028,
+    "MARRIAGE_3.0": 0.03,
+    "PAY_0": 0.055,
+    "PAY_2": 0.037,
+    "PAY_3": 0.032,
+    "PAY_4": 0.036,
+    "PAY_5": 0.044,
+    "PAY_6": 0.022
+  },
+  "categorical_psi": {},
+  "prediction": {},
+  "volume": {
+    "ratio": 1.0
+  }
+}

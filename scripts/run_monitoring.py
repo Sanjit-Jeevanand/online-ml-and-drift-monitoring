@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 
 from src.monitoring.aggregation import read_inference_logs
@@ -14,15 +14,16 @@ from src.monitoring.drift_decision import decide_drift_action
 
 
 LOG_PATH = Path("logs/inference.jsonl")
-BASELINE_SNAPSHOT_PATH = Path("snapshots/baseline.json")
-CURRENT_SNAPSHOT_PATH = Path("snapshots/current.json")
+BASELINE_SNAPSHOT_PATH = Path("artifacts/snapshots/baseline.json")
+CURRENT_SNAPSHOT_PATH = Path("artifacts/snapshots/current.json")
 DECISION_PATH = Path("artifacts/drift/decision.json")
+PRODUCTION_MODEL_PATH = Path("config/production_model.json")
 
-WINDOW_MINUTES = 10
+WINDOW_MINUTES = 30
 
 
 def main() -> None:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     window_start = now - timedelta(minutes=WINDOW_MINUTES)
 
     # --------------------------------------------------
@@ -34,18 +35,23 @@ def main() -> None:
         since_minutes=WINDOW_MINUTES,
     )
 
+    print(f"[Monitoring] Read {len(records)} inference records")
+
     if not records:
-        print("No inference records found — skipping monitoring.")
+        print("[Monitoring] No inference records found — skipping monitoring.")
         return
 
     # --------------------------------------------------
     # 2. Build current snapshot
     # --------------------------------------------------
 
+    production_model = json.loads(PRODUCTION_MODEL_PATH.read_text())
+    active_model_version = production_model["model_version"]
+
     current_snapshot = build_snapshot(
         records,
-        model_name="lightgbm",
-        model_version="v1.1.0",
+        model_name=production_model["model_name"],
+        model_version=active_model_version,
         feature_version="v1",
         window_start=window_start,
         window_end=now,
@@ -56,6 +62,11 @@ def main() -> None:
     # --------------------------------------------------
     # 3. Load baseline snapshot
     # --------------------------------------------------
+
+    if not BASELINE_SNAPSHOT_PATH.exists():
+        raise FileNotFoundError(
+            f"Baseline snapshot missing: {BASELINE_SNAPSHOT_PATH}"
+        )
 
     baseline_snapshot = json.loads(
         BASELINE_SNAPSHOT_PATH.read_text()

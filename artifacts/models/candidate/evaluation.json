@@ -1,0 +1,26 @@
+{
+  "decision": "PROMOTE",
+  "timestamp_utc": "2026-02-04T16:22:09.528262+00:00",
+  "metrics": {
+    "production": {
+      "roc_auc": 0.7614673847755575,
+      "pr_auc": 0.5277751699193738,
+      "brier_score": 0.12763806207523262
+    },
+    "candidate": {
+      "roc_auc": 0.7751440305529972,
+      "pr_auc": 0.5357095512872068,
+      "brier_score": 0.1236475152115933
+    },
+    "delta": {
+      "roc_auc": 0.013676645777439655,
+      "pr_auc": 0.007934381367832977,
+      "brier_score": -0.003990546863639324
+    }
+  },
+  "reasons": [
+    "roc_auc improved by 0.013677",
+    "pr_auc improved by 0.007934",
+    "brier_score degraded by -0.003991"
+  ]
+}

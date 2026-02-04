@@ -1,7 +1,5 @@
 {
-  "state": "PROMOTABLE",
-  "model_name": "lightgbm",
-  "model_version": "candidate-20260129-182120",
-  "updated_at": "2026-01-29T21:06:08.867969+00:00",
-  "updated_by": "governance_controller"
+  "state": "SHADOW",
+  "next_state": "SHADOW",
+  "updated_at": "2026-02-04T00:00:00Z"
 }

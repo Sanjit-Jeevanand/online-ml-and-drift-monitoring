@@ -10,8 +10,8 @@ from src.monitoring.drift_metrics import (
 from src.monitoring.snapshots import load_snapshot
 
 
-BASELINE_PATH = Path("snapshots/baseline.json")
-CURRENT_PATH = Path("snapshots/current.json")
+BASELINE_PATH = Path("artifacts/snapshots/baseline.json")
+CURRENT_PATH = Path("artifacts/snapshots/current.json")
 OUTPUT_PATH = Path("artifacts/drift/drift_metrics.json")
 
 

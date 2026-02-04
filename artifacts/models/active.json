@@ -1,0 +1,11 @@
+{
+  "model_name": "lightgbm",
+  "model_version": "v1.0.0",
+  "promoted_from_candidate": "candidate-20260129-191942",
+  "promotion_type": "shadow",
+  "promoted_at": "2026-02-04T07:37:12.268696+00:00",
+  "feature_contract": {
+    "version": "968ad9f7c1c9",
+    "n_features": 33
+  }
+}

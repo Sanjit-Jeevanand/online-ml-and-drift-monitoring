@@ -13,7 +13,7 @@ from src.features.metadata import load_feature_metadata_file
 FEATURES_DIR = Path("artifacts/features")
 METADATA_PATH = FEATURES_DIR / "feature_metadata.json"
 
-SNAPSHOT_DIR = Path("snapshots")
+SNAPSHOT_DIR = Path("artifacts/snapshots")
 BASELINE_SNAPSHOT_PATH = SNAPSHOT_DIR / "baseline.json"
 
 REFERENCE_FEATURES_PATH = FEATURES_DIR / "X_val.npy"
@@ -87,8 +87,21 @@ def main() -> None:
         "created_at": datetime.now(timezone.utc).isoformat(),
         "model_name": "lightgbm",
         "model_version": "v1.1.0",
-        "n_samples": int(X.shape[0]),
-        "feature_distributions": distributions,
+        "window": {
+            "start_utc": None,
+            "end_utc": None,
+            "duration_minutes": None,
+        },
+        "volume": {
+            "n_requests": int(X.shape[0]),
+            "n_success": int(X.shape[0]),
+            "n_errors": 0,
+        },
+        "predictions": None,
+        "features": {
+            "numeric": distributions,
+            "categorical": {},
+        },
     }
 
     # --------------------------------------------------------

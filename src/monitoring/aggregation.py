@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 # ============================================================
@@ -10,8 +10,9 @@ from datetime import datetime, timedelta
 
 def _parse_timestamp(ts: str) -> Optional[datetime]:
     try:
-        # Expected format: 2026-01-27T22:14:08.167057Z
-        return datetime.fromisoformat(ts.replace("Z", ""))
+        if ts.endswith("Z"):
+            ts = ts.replace("Z", "+00:00")
+        return datetime.fromisoformat(ts)
     except Exception:
         return None
 
@@ -29,7 +30,7 @@ def read_inference_logs(
     if not log_path.exists():
         raise FileNotFoundError(f"Inference log file not found: {log_path}")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     cutoff_time: Optional[datetime] = None
 
     if since_minutes is not None:
@@ -56,7 +57,7 @@ def read_inference_logs(
 
             # Timestamp filtering (if enabled)
             if cutoff_time is not None:
-                ts = record.get("timestamp_utc")
+                ts = record.get("timestamp_utc") or record.get("timestamp")
                 parsed_ts = _parse_timestamp(ts) if ts else None
 
                 if parsed_ts is None:
@@ -171,7 +172,7 @@ def aggregate_inference_metrics(
         },
     }
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from typing import List, Dict, Any
 
@@ -184,12 +185,14 @@ def bucket_records_by_time(
     buckets = defaultdict(list)
 
     for r in records:
-        ts = r.get("timestamp_utc")
+        ts = r.get("timestamp_utc") or r.get("timestamp")
         if not ts:
             continue
 
         try:
-            t = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            if ts.endswith("Z"):
+                ts = ts.replace("Z", "+00:00")
+            t = datetime.fromisoformat(ts)
         except Exception:
             continue
 
@@ -222,4 +225,3 @@ def aggregate_metrics_by_window(
         })
 
     return results
-

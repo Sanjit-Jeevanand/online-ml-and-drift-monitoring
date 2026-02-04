@@ -19,13 +19,14 @@ MODELS_DIR = ARTIFACTS_DIR / "models"
 CANDIDATE_DIR = MODELS_DIR / "candidate"
 DECISIONS_DIR = ARTIFACTS_DIR / "shadow"
 DECISIONS_DIR.mkdir(parents=True, exist_ok=True)
+ACTIVE_MODEL_PATH = MODELS_DIR / "active.json"
 
 
 # ============================================================
 # Promotion thresholds (hard gates)
 # ============================================================
 
-MIN_REQUESTS = 5
+MIN_REQUESTS = 500
 MAX_P95_PRED_DELTA = 0.02
 MAX_P95_SHADOW_LATENCY_MS = 15.0
 MAX_SHADOW_ERROR_RATE = 0.0
@@ -198,6 +199,33 @@ def main() -> None:
         calibration=calibration,
         metadata=candidate_meta,
     )
+
+    active_record = {
+        "model_name": model_name,
+        "model_version": promoted_version,
+        "promoted_from_candidate": candidate_version,
+        "promotion_type": "shadow",
+        "promoted_at": utc_now(),
+        "feature_contract": candidate_meta.get("feature_contract"),
+    }
+
+    ACTIVE_MODEL_PATH.write_text(json.dumps(active_record, indent=2))
+
+    # --------------------------------------------------------
+    # Update production model pointer (authoritative)
+    # --------------------------------------------------------
+
+    prod_cfg_path = Path("config/production_model.json")
+
+    prod_cfg = {
+        "model_name": model_name,
+        "model_version": promoted_version,
+        "promotion_type": "shadow",
+        "updated_at": utc_now(),
+    }
+
+    prod_cfg_path.parent.mkdir(parents=True, exist_ok=True)
+    prod_cfg_path.write_text(json.dumps(prod_cfg, indent=2))
 
     invalidate_candidate()
 

@@ -1,29 +1,36 @@
 {
   "analysis_window": {
-    "start": null,
-    "end": null
+    "start": "2026-02-04T16:15:47.767361+00:00",
+    "end": "2026-02-04T16:25:47.767361+00:00"
   },
   "counts": {
-    "paired_requests": 15
+    "paired_requests": 4422
+  },
+  "production_baseline": {
+    "mean_prediction": 0.21134746315940764,
+    "p95_latency_ms": 0.33104562025982887,
+    "error_rate": 0.0
   },
   "prediction_comparison": {
-    "mean_delta": 0.0,
-    "median_delta": 0.0,
-    "p95_abs_delta": 0.0,
-    "outlier_pct": 0.0
+    "mean_delta": -0.010807573124913778,
+    "median_delta": -0.03242294820420319,
+    "p95_abs_delta": 0.17489628155576697,
+    "outlier_pct": 57.869742198100404
   },
   "latency_comparison": {
-    "mean_delta_ms": 2.2702666666666667,
-    "p95_shadow_ms": 6.671000000000001
+    "mean_delta_ms": -0.0015212494253603406,
+    "p95_shadow_ms": 0.341231282800436
   },
   "error_rates": {
     "production": 0.0,
     "shadow": 0.0
   },
   "decision": {
-    "recommendation": "SAFE_TO_PROMOTE",
-    "severity": "low",
-    "reasons": []
+    "recommendation": "HOLD",
+    "severity": "high",
+    "reasons": [
+      "High prediction divergence (p95 > 0.1)"
+    ]
   },
-  "generated_at": "2026-01-29T21:42:20.089854+00:00"
+  "generated_at": "2026-02-04T16:25:47.809369+00:00"
 }

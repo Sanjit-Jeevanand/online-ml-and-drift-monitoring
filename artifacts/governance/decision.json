@@ -1,13 +1,13 @@
 {
   "decision": "NO_OP",
-  "current_state": "PROMOTABLE",
-  "next_state": "PROMOTABLE",
+  "current_state": "SHADOW",
+  "next_state": "SHADOW",
   "allowed_transitions": [],
   "blocked_transitions": [],
   "reasons": [
-    "No automated transitions defined for state 'PROMOTABLE'"
+    "No automated transitions defined for state 'SHADOW'"
   ],
-  "model_name": "lightgbm",
-  "model_version": "candidate-20260129-182120",
-  "evaluated_at": "2026-01-29T21:45:20.542444+00:00"
+  "model_name": null,
+  "model_version": null,
+  "evaluated_at": "2026-02-04T16:26:07.203642+00:00"
 }

@@ -47,9 +47,9 @@ def build_snapshot(
     categorical_features: Dict[str, Dict[str, int]] = {}
 
     for r in records:
-        stats = r.get("feature_stats", {})
-        numeric = stats.get("numeric", {})
-        categorical = stats.get("categorical", {})
+        features = r.get("features", {})
+        numeric = features.get("numeric", {})
+        categorical = features.get("categorical", {})
 
         for k, v in numeric.items():
             numeric_features.setdefault(k, []).append(v)
