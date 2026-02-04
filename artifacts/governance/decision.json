@@ -1,13 +1,15 @@
 {
-  "decision": "NO_OP",
+  "decision": "BLOCK",
   "current_state": "SHADOW",
   "next_state": "SHADOW",
   "allowed_transitions": [],
-  "blocked_transitions": [],
+  "blocked_transitions": [
+    "PROMOTABLE"
+  ],
   "reasons": [
-    "No automated transitions defined for state 'SHADOW'"
+    "Prediction divergence too high (p95_abs_delta=0.1749)"
   ],
   "model_name": null,
   "model_version": null,
-  "evaluated_at": "2026-02-04T16:26:07.203642+00:00"
+  "evaluated_at": "2026-02-04T19:34:49.493500+00:00"
 }

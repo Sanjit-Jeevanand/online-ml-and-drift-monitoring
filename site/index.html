@@ -63,12 +63,9 @@
         .node-active {
             fill: #38bdf8;
             filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.8));
-            transform: scale(1.2);
-            transition: all 0.4s ease;
         }
         .node-inactive {
             fill: #334155;
-            transition: all 0.4s ease;
         }
         .connection-line {
             stroke: #1e293b;
@@ -111,10 +108,6 @@
             visibility: hidden;
             opacity: 0;
             transition: opacity 0.3s;
-        }
-        .has-tooltip:hover .tooltip {
-            visibility: visible;
-            opacity: 1;
         }
         /* Custom scrollbar */
         ::-webkit-scrollbar {
@@ -187,8 +180,9 @@
                 <a href="#architecture" class="px-8 py-4 bg-primary-600 hover:bg-primary-500 text-white font-medium rounded-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-primary-500/25">
                     Explore the Architecture
                 </a>
-                <a href="#lifecycle" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg border border-slate-700 transition-all">
-                    View the Full Lifecycle
+                <a href="https://d4na84yf0dizj.cloudfront.net/" target="_blank"
+                   class="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/30">
+                    🚀 Live Demo
                 </a>
             </div>
 
@@ -684,67 +678,67 @@
                         <line x1="150" y1="690" x2="150" y2="730" class="connection-line" id="line-12" />
                         
                         <!-- Nodes -->
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(1)" onmouseenter="highlightNode(1)" onmouseleave="resetNode(1)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="30" r="12" class="node-inactive" id="node-1" />
                             <text x="180" y="35" class="text-xs fill-slate-400 font-mono text-[10px]">Data Ingestion</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(2)" onmouseenter="highlightNode(2)" onmouseleave="resetNode(2)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="80" r="12" class="node-inactive" id="node-2" />
                             <text x="180" y="85" class="text-xs fill-slate-400 font-mono text-[10px]">Feature Contract</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(3)" onmouseenter="highlightNode(3)" onmouseleave="resetNode(3)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="140" r="12" class="node-inactive" id="node-3" />
                             <text x="180" y="145" class="text-xs fill-slate-400 font-mono text-[10px]">Training</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(4)" onmouseenter="highlightNode(4)" onmouseleave="resetNode(4)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="200" r="12" class="node-inactive" id="node-4" />
                             <text x="180" y="205" class="text-xs fill-slate-400 font-mono text-[10px]">Model Registry</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(5)" onmouseenter="highlightNode(5)" onmouseleave="resetNode(5)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="260" r="12" class="node-inactive" id="node-5" />
                             <text x="180" y="265" class="text-xs fill-slate-400 font-mono text-[10px]">Inference API</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(6)" onmouseenter="highlightNode(6)" onmouseleave="resetNode(6)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="320" r="12" class="node-inactive" id="node-6" />
                             <text x="180" y="325" class="text-xs fill-slate-400 font-mono text-[10px]">Logging</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(7)" onmouseenter="highlightNode(7)" onmouseleave="resetNode(7)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="380" r="12" class="node-inactive" id="node-7" />
                             <text x="180" y="385" class="text-xs fill-slate-400 font-mono text-[10px]">Snapshot Agg</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(8)" onmouseenter="highlightNode(8)" onmouseleave="resetNode(8)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="440" r="12" class="node-inactive" id="node-8" />
                             <text x="180" y="445" class="text-xs fill-slate-400 font-mono text-[10px]">Drift Detection</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(9)" onmouseenter="highlightNode(9)" onmouseleave="resetNode(9)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="500" r="12" class="node-inactive" id="node-9" />
                             <text x="180" y="505" class="text-xs fill-slate-400 font-mono text-[10px]">Retraining Decision</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(10)" onmouseenter="highlightNode(10)" onmouseleave="resetNode(10)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="560" r="12" class="node-inactive" id="node-10" />
                             <text x="180" y="565" class="text-xs fill-slate-400 font-mono text-[10px]">Evaluation</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(11)" onmouseenter="highlightNode(11)" onmouseleave="resetNode(11)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="620" r="12" class="node-inactive" id="node-11" />
                             <text x="180" y="625" class="text-xs fill-slate-400 font-mono text-[10px]">Shadow Deploy</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(12)" onmouseenter="highlightNode(12)" onmouseleave="resetNode(12)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="680" r="12" class="node-inactive" id="node-12" />
                             <text x="180" y="685" class="text-xs fill-slate-400 font-mono text-[10px]">Governance</text>
                         </g>
                         
-                        <g class="has-tooltip cursor-pointer" onclick="scrollToSection(13)" onmouseenter="highlightNode(13)" onmouseleave="resetNode(13)">
+                        <g class="has-tooltip">
                             <circle cx="150" cy="740" r="14" class="node-inactive" id="node-13" fill="url(#lineGradient)" />
                             <text x="180" y="745" class="text-xs fill-primary-400 font-mono text-[10px] font-bold">Promotion</text>
                         </g>
@@ -863,26 +857,6 @@
             currentActive = index;
         }
 
-        function scrollToSection(num) {
-            const element = document.getElementById(`section-${num}`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-
-        function highlightNode(num) {
-            const node = document.getElementById(`node-${num}`);
-            node.style.transform = 'scale(1.3)';
-            node.style.filter = 'drop-shadow(0 0 15px rgba(56, 189, 248, 0.9))';
-        }
-
-        function resetNode(num) {
-            if (num !== currentActive) {
-                const node = document.getElementById(`node-${num}`);
-                node.style.transform = 'scale(1)';
-                node.style.filter = '';
-            }
-        }
 
         // Fade in sections on scroll
         const fadeObserver = new IntersectionObserver((entries) => {

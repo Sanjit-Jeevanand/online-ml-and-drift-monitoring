@@ -41,8 +41,12 @@ class Predictor:
             self.model_name = self.metadata.get("model_name")
             self.model_version = self.metadata.get("model_version")
 
-            if self.model_name is None or self.model_version is None:
-                raise ValueError("Metadata missing model_name or model_version fields.")
+            # Shadow artifacts may not have full registry metadata.
+            # Do NOT crash inference if these fields are missing.
+            if self.model_name is None:
+                self.model_name = "unknown"
+            if self.model_version is None:
+                self.model_version = "unknown"
         else:
             if model_name is None or model_version is None:
                 raise ValueError("Must provide either artifact_path or both model_name and model_version.")

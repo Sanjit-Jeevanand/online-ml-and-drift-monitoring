@@ -123,10 +123,10 @@ def decide_next_state(
     blocked_transitions: List[str] = []
 
     # --------------------------------------------------------
-    # Only SHADOWING → PROMOTABLE is automated (for now)
+    # Only SHADOW → PROMOTABLE is automated (for now)
     # --------------------------------------------------------
 
-    if current_state != "SHADOWING":
+    if current_state != "SHADOW":
         return {
             "decision": "NO_OP",
             "current_state": current_state,
@@ -149,7 +149,7 @@ def decide_next_state(
         return {
             "decision": "BLOCK",
             "current_state": current_state,
-            "next_state": "SHADOWING",
+            "next_state": "SHADOW",
             "allowed_transitions": [],
             "blocked_transitions": blocked_transitions,
             "reasons": reasons,
